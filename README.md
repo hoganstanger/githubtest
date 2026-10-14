@@ -3,7 +3,7 @@
 A map quiz for 7th grade world geography. Open **[`country-quiz.html`](country-quiz.html)** in any browser (Chrome on a Chromebook works). It's one self-contained file with no login, no internet needed after it loads, and no student data collected or saved.
 
 - Pick a region: Africa, Asia, Europe, North & Central America, South America, or the Whole World.
-- Each question shows one country highlighted in orange on a map, with neighboring countries in gray for context. Students choose from four names.
+- Each question shows one country highlighted in neon pink on a map, with neighboring countries in gray for context. Students choose from four names.
 - Wrong answers are plausible: mostly bordering countries, then nearby countries of similar size from the same region.
 - Students get instant feedback (✓/✗). If they miss, the page shows the correct answer before moving on.
 - A round is 10 questions with no repeats. At the end students see their score, a review card for each country they missed, and a **Play Again** button.

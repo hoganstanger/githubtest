@@ -17,8 +17,8 @@
     --land: #dcd7cb;
     --border: #ffffff;
     --disputed: #8a8476;
-    --target: #f08c1a;
-    --target-edge: #9c4f00;
+    --target: #ff1fa9;
+    --target-edge: #a8006a;
     --right: #1b7f3b;
     --right-bg: #e3f5e8;
     --wrong: #b3261e;
@@ -156,7 +156,7 @@
 
   <section id="start">
     <h1>Name That Country</h1>
-    <p class="muted">You'll see a country highlighted in orange on a map. Pick its name from four choices. Each round is 10 questions.</p>
+    <p class="muted">You'll see a country highlighted in pink on a map. Pick its name from four choices. Each round is 10 questions.</p>
     <h2>Choose a region</h2>
     <div class="regions" id="regions" role="group" aria-label="Region"></div>
     <button class="primary" id="startBtn">Start</button>
@@ -284,7 +284,7 @@ function renderQuestion() {
   $("score").textContent = `Score: ${score}`;
   $("bar").style.width = `${(qi / questions.length) * 100}%`;
   const map = $("map");
-  map.replaceChildren(mapSvg(q.answer, "Map with one country highlighted in orange"));
+  map.replaceChildren(mapSvg(q.answer, "Map with one country highlighted in pink"));
   $("status").className = "status";
   $("statusText").textContent = "Which country is highlighted?";
   $("nextBtn").hidden = true;
