@@ -185,20 +185,29 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 .choices { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 .choice {
   border: 0; cursor: pointer; color: #fff; border-radius: 26px; padding: 14px 0;
+  position: relative; overflow: hidden; text-shadow: 0 3px 0 rgba(58, 20, 90, .22);
   font-family: var(--display); font-weight: 800; font-size: clamp(44px, 11vw, 64px); line-height: 1.1;
   transition: transform .12s, opacity .2s;
 }
 .choice:nth-child(4n+1), .choice:nth-child(4n+4) {
-  background: radial-gradient(circle, rgba(255,255,255,.85) 0 1px, transparent 1.6px) 0 0 / 12px 12px, linear-gradient(135deg, #ff6fbd, var(--pink-deep));
+  background: linear-gradient(180deg, #ff86c8 0%, var(--pink) 45%, var(--pink-deep) 100%);
   box-shadow: 0 6px 0 #b30d66;
 }
 .choice:nth-child(4n+2), .choice:nth-child(4n+3) {
-  background: radial-gradient(circle, rgba(255,255,255,.85) 0 1px, transparent 1.6px) 0 0 / 12px 12px, linear-gradient(135deg, #5cc6ff, var(--blue-deep));
+  background: linear-gradient(180deg, #7dd6ff 0%, var(--blue) 45%, var(--blue-deep) 100%);
   box-shadow: 0 6px 0 #0f56a8;
 }
+/* glossy candy shine + one corner sparkle */
+.choice::before {
+  content: ""; position: absolute; left: 7%; right: 7%; top: 5px; height: 44%;
+  border-radius: 22px 22px 60px 60px / 22px 22px 30px 30px;
+  background: linear-gradient(rgba(255,255,255,.6), rgba(255,255,255,.05));
+  pointer-events: none;
+}
+.choice::after { content: "✦"; position: absolute; top: 9px; right: 16px; font-size: 18px; line-height: 1; color: #fff; opacity: .9; text-shadow: none; }
 .choice:active { transform: translateY(4px); }
 .choice.out { opacity: .25; pointer-events: none; }
-.choice.win { background: linear-gradient(135deg, #4fe0ad, var(--good)); box-shadow: 0 6px 0 #138a60; }
+.choice.win { background: linear-gradient(180deg, #7cf0c4 0%, #2fd59a 45%, var(--good) 100%); box-shadow: 0 6px 0 #138a60; }
 
 .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 420px; width: 100%; margin: 0 auto; }
 .key {
