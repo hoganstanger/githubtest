@@ -39,6 +39,7 @@ body {
   overflow-x: hidden;
 }
 #glitter { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+#lasers { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
 .wrap {
   position: relative; z-index: 1;
   max-width: 720px; margin: 0 auto;
@@ -338,7 +339,6 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
     <div class="progress" aria-hidden="true"><div id="bar"></div></div>
     <div class="panel card" id="card">
       <div class="card-tools">
-        <button class="icon-btn" id="sayBtn" aria-label="Read it to me" title="Read it to me">🗣️</button>
         <button class="icon-btn" id="hintBtn" aria-label="Show me dots" title="Show me dots">💡</button>
       </div>
       <div><span class="focus-badge" id="focusBadge" hidden></span></div>
@@ -385,7 +385,6 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   const STICKERS = ['🦄','🌈','🦋','🍭','👑','🌸','🐬','🧁','💎','🎀','🌙','🐱','🍓','🪐','🐰','🌟','🍩','🦩','🐳','🌺'];
   const PRAISE = ['Sparkly!', 'You got it!', 'Super star!', 'Yes!', 'Glitter-tastic!', 'Amazing!', 'Wow!', 'Brilliant!', 'Nailed it!'];
   const TRY = ['So close! Try again', 'Oops! One more try', 'Almost! Try again'];
-  const CHEERS = ['Woohoo!', 'Yay!', 'Awesome!', 'You did it!', 'Super star!', 'Way to go!', 'Amazing!', 'Hooray!'];
   const FAMILIES = [
     { n: 1, emo: '🐝', name: 'Buzzy 1s',      fact: 'Just one more, buzz buzz!',  c: ['#ff8fcf', '#ff3ea5', '#e0137f'], sh: '#b30d66' },
     { n: 2, emo: '🐧', name: 'Penguin 2s',    fact: 'Penguins waddle on 2 feet!', c: ['#7dd6ff', '#29b0ff', '#1677e0'], sh: '#0f56a8' },
@@ -420,13 +419,15 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 
   /* ---------- sound ---------- */
   let ac;
-  function tone(freq, start, dur, type = 'sine', vol = .18) {
+  function tone(freq, start, dur, type = 'sine', vol = .18, to = 0) {
     if (!S.sound) return;
     try {
       ac = ac || new (window.AudioContext || window.webkitAudioContext)();
       const o = ac.createOscillator(), g = ac.createGain();
-      o.type = type; o.frequency.value = freq;
+      o.type = type;
       const t = ac.currentTime + start;
+      o.frequency.setValueAtTime(freq, t);
+      if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
       g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .02);
       g.gain.exponentialRampToValueAtTime(.001, t + dur);
       o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + .05);
@@ -443,27 +444,20 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
     [3136, 3520, 4186, 4699, 4186, 4699, 5274].forEach((f, i) => tone(f, .9 + i * .05, .25, 'sine', .04));
   };
 
-  // pick the friendliest voice the device has (iPhone: Ava/Samantha, Android/Chrome: Google US English)
-  let voice = null;
-  function pickVoice() {
-    try {
-      const vs = speechSynthesis.getVoices();
-      const prefs = ['Ava', 'Samantha', 'Google US English', 'Microsoft Aria', 'Microsoft Jenny', 'Allison', 'Karen', 'Moira', 'Tessa', 'Zira'];
-      voice = prefs.map(n => vs.find(v => v.name.includes(n) && /^en/i.test(v.lang))).find(Boolean)
-        || vs.find(v => /^en[-_]US/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
-    } catch {}
+  // happy sound effects: a few different ones take turns so right answers stay fresh
+  const sparkleSweep = () => [1568, 1760, 2093, 2349, 2637, 3136, 3520, 4186].forEach((f, i) => tone(f, i * .035, .25, 'sine', .07));
+  const bubblePops = () => { [0, .1, .2].forEach((t, i) => tone(500 + i * 220, t, .12, 'sine', .17, 1400 + i * 400)); tone(2093, .32, .3, 'triangle', .1); };
+  const bells = () => [[1318, 0], [1568, .1], [2093, .2], [2637, .2]].forEach(([f, t]) => { tone(f, t, .6, 'sine', .1); tone(f * 3, t, .2, 'sine', .02); });
+  const boing = () => { tone(220, 0, .28, 'triangle', .14, 880); [2093, 2637, 3136].forEach((f, i) => tone(f, .22 + i * .06, .25, 'sine', .07)); };
+  const HAPPY = [chime, sparkleSweep, bubblePops, bells, boing];
+  let lastHappy = -1;
+  function happySound() {
+    let i; do { i = (Math.random() * HAPPY.length) | 0; } while (i === lastHappy && HAPPY.length > 1);
+    lastHappy = i; HAPPY[i]();
   }
-  if ('speechSynthesis' in window) { pickVoice(); try { speechSynthesis.onvoiceschanged = pickVoice; } catch {} }
-  function say(text, style = 'calm') {
-    if (!S.sound || !('speechSynthesis' in window)) return;
-    try {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      if (voice) u.voice = voice;
-      if (style === 'cheer') { u.rate = 1.08; u.pitch = 1.45; } else { u.rate = .92; u.pitch = 1.2; }
-      speechSynthesis.speak(u);
-    } catch {}
-  }
+  const levelUp = () => [1046, 1175, 1318, 1568, 1760, 2093].forEach((f, i) => { tone(f, i * .06, .2, 'square', .045); tone(f * 2, i * .06, .2, 'sine', .04); });
+  const zap = () => { tone(2400, 0, .16, 'sawtooth', .04, 500); tone(3200, .02, .12, 'sine', .05, 900); sparkleSweep(); };
+  const whoosh = () => { tone(260, 0, .4, 'sine', .1, 1600); [2093, 2637, 3136, 4186].forEach((f, i) => tone(f, .32 + i * .05, .22, 'sine', .05)); };
 
   /* ---------- glitter canvas ---------- */
   const cv = $('glitter'), cx = cv.getContext('2d');
@@ -515,6 +509,64 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   }
   addEventListener('resize', resize); resize();
   if (!reduceMotion) requestAnimationFrame(loop);
+
+  /* ---------- laser show (end of every round, good or bad) ---------- */
+  const lz = document.createElement('canvas');
+  lz.id = 'lasers'; lz.setAttribute('aria-hidden', 'true'); document.body.appendChild(lz);
+  const lx = lz.getContext('2d');
+  const LASER_COLORS = ['#ff3ea5', '#29b0ff', '#b44dff', '#3dffb5', '#ffe14d', '#ff7cc8'];
+  let beams = [], laserStart = 0, laserEnd = 0, laserRunning = false;
+  function sizeLasers() { lz.width = innerWidth * dpr; lz.height = innerHeight * dpr; lx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  addEventListener('resize', sizeLasers);
+  const pew = (t) => { tone(1900, t, .16, 'square', .03, 320); tone(3800, t, .08, 'sine', .02, 900); };
+  function laserShow(ms) {
+    if (reduceMotion) return;
+    sizeLasers();
+    const w = innerWidth, h = innerHeight;
+    // beams fan out from the bottom corners, bottom middle and top corners
+    const origins = [[0, h], [w, h], [w / 2, h + 10], [0, -10], [w, -10]];
+    beams = [];
+    origins.forEach(([x, y], oi) => {
+      for (let k = 0; k < 4; k++) beams.push({
+        x, y, base: Math.atan2(h * .45 - y, w / 2 - x), spread: .55 + Math.random() * .5,
+        speed: 1.1 + Math.random() * 1.9, ph: Math.random() * 6.28 + k * 1.6,
+        c: LASER_COLORS[(oi * 4 + k) % LASER_COLORS.length]
+      });
+    });
+    laserStart = performance.now(); laserEnd = laserStart + ms;
+    const pews = Math.round(ms / 260);
+    for (let i = 0; i < pews; i++) pew(.25 + i * .24 + Math.random() * .06);
+    if (!laserRunning) { laserRunning = true; requestAnimationFrame(drawLasers); }
+  }
+  function stopLasers() { laserEnd = 0; }
+  function drawLasers(t) {
+    const w = innerWidth, h = innerHeight;
+    lx.clearRect(0, 0, w, h);
+    const left = laserEnd - t;
+    if (left <= 0) { laserRunning = false; return; }
+    const fade = Math.max(0, Math.min(1, (t - laserStart) / 300, left / 900));
+    const len = Math.hypot(w, h) * 1.2;
+    // dim the lights so the neon pops
+    lx.fillStyle = 'rgba(36, 10, 72, ' + (.5 * fade) + ')'; lx.fillRect(0, 0, w, h);
+    lx.globalCompositeOperation = 'lighter';
+    for (const b of beams) {
+      const ang = b.base + Math.sin(b.ph + t / 1000 * b.speed) * b.spread;
+      const ex = b.x + Math.cos(ang) * len, ey = b.y + Math.sin(ang) * len;
+      lx.beginPath(); lx.moveTo(b.x, b.y); lx.lineTo(ex, ey);
+      lx.strokeStyle = b.c;
+      lx.globalAlpha = .18 * fade; lx.lineWidth = 16; lx.stroke();   // soft glow
+      lx.globalAlpha = .85 * fade; lx.lineWidth = 3.5; lx.stroke();  // beam
+      lx.strokeStyle = '#ffffff'; lx.globalAlpha = .7 * fade; lx.lineWidth = 1; lx.stroke(); // hot core
+    }
+    // glowing emitters
+    for (const [x, y] of [[0, h], [w, h], [w / 2, h], [0, 0], [w, 0]]) {
+      const g = lx.createRadialGradient(x, y, 0, x, y, 60);
+      g.addColorStop(0, `rgba(255,255,255,${.8 * fade})`); g.addColorStop(1, 'rgba(255,62,165,0)');
+      lx.globalAlpha = 1; lx.fillStyle = g; lx.fillRect(x - 60, y - 60, 120, 120);
+    }
+    lx.globalCompositeOperation = 'source-over'; lx.globalAlpha = 1;
+    requestAnimationFrame(drawLasers);
+  }
 
   /* ---------- helpers ---------- */
   const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -583,7 +635,7 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
     nextCard();
     if (fam) {
       $('feedback').textContent = fam.fact; $('feedback').className = 'feedback intro';
-      say(isCh ? 'Super Sparkle Challenge! Every fact, all mixed up. Beat the clock!' : `${fam.fact} Let's go!`, 'cheer');
+      whoosh();
     }
   }
 
@@ -695,19 +747,17 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
       S.locked = true;
       ans.textContent = sum; ans.className = 'ans right';
       const secs = stopTimer();
-      const zap = S.tries === 0 && secs <= CHALLENGE_SECONDS;
+      const fast = S.tries === 0 && secs <= CHALLENGE_SECONDS;
       if (S.tries === 0) { S.stars++; S.firstTry++; S.streak++; } else S.streak = 0;
-      if (zap) S.lightning++;
+      if (fast) S.lightning++;
       updateHud();
-      fb.textContent = S.tries === 0 ? (zap ? '⚡ Lightning fast!' : S.streak >= 3 && S.streak % 3 === 0 ? `${S.streak} in a row! 🔥` : pick(PRAISE)) : 'You figured it out!';
-      const cheerWord = S.tries === 0 ? (zap ? 'Lightning fast!' : pick(CHEERS)) : 'You figured it out!';
-      setTimeout(() => say(`${cheerWord} ${a} plus ${b} is ${sum}!`, 'cheer'), 150);
+      fb.textContent = S.tries === 0 ? (fast ? '⚡ Lightning fast!' : S.streak >= 3 && S.streak % 3 === 0 ? `${S.streak} in a row! 🔥` : pick(PRAISE)) : 'You figured it out!';
       fb.className = 'feedback good';
       if (S.mode === 'pick') btn.classList.add('win');
       anim($('card'), 'bounce');
       const [x, y] = centerOf(ans); burst(x, y, S.tries === 0 ? 80 : 35);
-      chime();
-      setTimeout(() => { S.idx++; nextCard(); }, S.sound ? 2100 : 1300);
+      if (fast) zap(); else if (S.tries === 0 && S.streak >= 3 && S.streak % 3 === 0) levelUp(); else happySound();
+      setTimeout(() => { S.idx++; nextCard(); }, 1500);
     } else {
       S.tries++; S.streak = 0; updateHud();
       const key = `${a} + ${b}`; S.missed.set(key, (S.missed.get(key) || 0) + 1);
@@ -751,8 +801,8 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
     $('tricky').innerHTML = tricky.map(k => { const [a, b] = k.split(' + ').map(Number); return `<span>${k} = ${a + b}</span>`; }).join('');
     show('resultScreen');
     fanfare();
+    laserShow(total >= 20 ? 6000 : 4500);
     setTimeout(() => { burst(W * .25, H * .35, 70); burst(W * .75, H * .35, 70); if (earned) burst(W / 2, H * .5, 90); }, 150);
-    say(ratio === 1 ? (isCh ? 'Challenge champion! You are a math superstar!' : 'Perfect! You are a math superstar!') : `Yay! You got ${got} stars!`, 'cheer');
   }
 
   function renderBest() {
@@ -772,14 +822,12 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
       box.appendChild(btn);
     });
   }
-  function goHome() { S.focus = null; stopTimer(); speechSynthesisStop(); renderBook(); renderBest(); show('startScreen'); }
-  function speechSynthesisStop() { try { speechSynthesis.cancel(); } catch {} }
+  function goHome() { S.focus = null; stopTimer(); stopLasers(); renderBook(); renderBest(); show('startScreen'); }
   $('startBtn').onclick = () => { S.focus = null; startRound(); };
   $('againBtn').onclick = startRound;
   $('changeBtn').onclick = goHome;
   $('quitBtn').onclick = goHome;
   $('hintBtn').onclick = showDots;
-  $('sayBtn').onclick = () => { const { a, b } = S.queue[S.idx]; say(`${a} plus ${b} equals what?`, 'calm'); };
 
   setToggle('modeToggle', 'mode', S.mode);
   setToggle('lenToggle', 'len', S.len);
