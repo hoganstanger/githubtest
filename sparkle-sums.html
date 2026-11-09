@@ -89,22 +89,30 @@ h2 { font-family: var(--display); font-weight: 800; font-size: 28px; margin: 0; 
   font-family: var(--display); font-weight: 800; font-size: 26px;
   padding: 14px 28px; border-radius: 999px;
   background:
-    radial-gradient(circle, rgba(255,255,255,.9) 0 1px, transparent 1.6px) 0 0 / 11px 11px,
-    radial-gradient(circle, rgba(255,255,255,.6) 0 1px, transparent 1.4px) 5px 6px / 13px 13px,
-    linear-gradient(135deg, var(--pink), var(--pink-deep));
+    linear-gradient(180deg, #ff86c8 0%, var(--pink) 45%, var(--pink-deep) 100%);
   box-shadow: 0 5px 0 #b30d66, 0 10px 20px rgba(224, 19, 127, .35);
   transition: transform .1s, box-shadow .1s;
 }
 .glitter-btn.blue {
-  background:
-    radial-gradient(circle, rgba(255,255,255,.9) 0 1px, transparent 1.6px) 0 0 / 11px 11px,
-    radial-gradient(circle, rgba(255,255,255,.6) 0 1px, transparent 1.4px) 5px 6px / 13px 13px,
-    linear-gradient(135deg, var(--blue), var(--blue-deep));
+  background: linear-gradient(180deg, #7dd6ff 0%, var(--blue) 45%, var(--blue-deep) 100%);
   box-shadow: 0 5px 0 #0f56a8, 0 10px 20px rgba(22, 119, 224, .35);
 }
 .glitter-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #b30d66; }
 .glitter-btn.blue:active { box-shadow: 0 1px 0 #0f56a8; }
 button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
+
+/* shared glossy candy shine */
+.glitter-btn, .chip, .focus-tile, .key.go { position: relative; overflow: hidden; }
+.glitter-btn::before, .chip[aria-pressed="true"]::before, .focus-tile::before, .key.go::before {
+  content: ""; position: absolute; left: 7%; right: 7%; top: 4px; height: 44%;
+  border-radius: 999px 999px 40% 40% / 999px 999px 30% 30%;
+  background: linear-gradient(rgba(255,255,255,.55), rgba(255,255,255,.04));
+  pointer-events: none;
+}
+.focus-tile::before { height: 26%; top: 5px; border-radius: 18px 18px 40px 40px; }
+.focus-tile > * { position: relative; }
+.glitter-btn, .chip[aria-pressed="true"], .focus-tile, .key.go { text-shadow: 0 2px 0 rgba(58, 20, 90, .22); }
+
 
 /* ---------- start screen ---------- */
 .chips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
@@ -116,9 +124,8 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 }
 .chip[aria-pressed="true"] {
   border-color: var(--pink); color: #fff;
-  background:
-    radial-gradient(circle, rgba(255,255,255,.8) 0 1px, transparent 1.5px) 0 0 / 10px 10px,
-    linear-gradient(135deg, var(--pink), var(--blue));
+  background: linear-gradient(180deg, #ff86c8 0%, var(--pink) 50%, var(--pink-deep) 100%);
+  box-shadow: 0 4px 0 #b30d66;
 }
 .chip:active { transform: scale(.94); }
 .chip.all { font-size: 20px; }
@@ -142,9 +149,8 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 .progress { height: 18px; background: var(--card); border-radius: 999px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(58,42,122,.12); }
 .progress > div {
   height: 100%; width: 0; border-radius: 999px; transition: width .4s ease;
-  background:
-    radial-gradient(circle, rgba(255,255,255,.9) 0 1px, transparent 1.5px) 0 0 / 9px 9px,
-    linear-gradient(90deg, var(--pink), var(--blue));
+  background: linear-gradient(90deg, var(--pink), #b44dff, var(--blue));
+  box-shadow: inset 0 4px 0 rgba(255,255,255,.4);
 }
 .card {
   position: relative; text-align: center;
@@ -216,7 +222,7 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   background: var(--card); box-shadow: 0 5px 0 var(--blue-soft), 0 8px 16px rgba(58,42,122,.1);
 }
 .key:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--blue-soft); }
-.key.go { color: #fff; background: linear-gradient(135deg, var(--pink), var(--pink-deep)); box-shadow: 0 5px 0 #b30d66; }
+.key.go { color: #fff; background: linear-gradient(180deg, #ff86c8 0%, var(--pink) 45%, var(--pink-deep) 100%); box-shadow: 0 5px 0 #b30d66; }
 .key.del { color: var(--ink-soft); font-size: 28px; }
 
 .shake { animation: shake .45s; }
@@ -250,11 +256,11 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 .focus-tile .tag { font-size: 14px; }
 .focus-tile .best { font-family: var(--display); font-weight: 800; font-size: 15px; margin-top: 8px; background: rgba(255,255,255,.28); border-radius: 999px; padding: 2px 10px; align-self: flex-start; }
 .focus-8 {
-  background: radial-gradient(circle, rgba(255,255,255,.85) 0 1px, transparent 1.6px) 0 0 / 12px 12px, linear-gradient(135deg, #ff5cb4, #b44dff);
+  background: linear-gradient(180deg, #ff8ccc 0%, #d65cf0 55%, #a63cf0 100%);
   box-shadow: 0 6px 0 #8a2bc4;
 }
 .focus-9 {
-  background: radial-gradient(circle, rgba(255,255,255,.85) 0 1px, transparent 1.6px) 0 0 / 12px 12px, linear-gradient(135deg, #3fd0ff, #4d6bff);
+  background: linear-gradient(180deg, #7de0ff 0%, #3fa0ff 55%, #4d6bff 100%);
   box-shadow: 0 6px 0 #2e45c4;
 }
 .focus-badge { display: inline-block; font-family: var(--display); font-weight: 800; font-size: 18px; color: #fff; border-radius: 999px; padding: 4px 14px; box-shadow: none; position: absolute; top: 16px; left: 16px; }
@@ -295,7 +301,7 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
     </div>
     <div>
       <h2>Or mix your own facts</h2>
-      <p class="sub">Tap the cards from your flashcard pile. Sparkly ones are in!</p>
+      <p class="sub">Tap the cards from your flashcard pile. Pink ones are in!</p>
     </div>
     <div class="chips" id="chips"></div>
     <div class="row" style="justify-content: space-between;">
