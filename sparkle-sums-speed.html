@@ -1,0 +1,922 @@
+<title>Sparkle Sums Speed</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;800&display=swap">
+<style>
+/* Layout: one centered play column over a twinkling glitter field; screens swap in place (start → play → results). */
+:root {
+  --pink: #ff3ea5;
+  --pink-deep: #e0137f;
+  --pink-soft: #ffd6ec;
+  --blue: #29b0ff;
+  --blue-deep: #1677e0;
+  --blue-soft: #d4efff;
+  --ink: #3a2a7a;
+  --ink-soft: #6c5fa6;
+  --card: #ffffff;
+  --gold: #ffc93c;
+  --good: #22c58b;
+  --bg-a: #ffe1f2;
+  --bg-b: #dcf2ff;
+  --display: "Baloo 2", "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif;
+  --body: "Nunito", "Trebuchet MS", system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { min-height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--body);
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 15% 10%, var(--pink-soft) 0, transparent 45%),
+    radial-gradient(circle at 85% 90%, var(--blue-soft) 0, transparent 50%),
+    linear-gradient(160deg, var(--bg-a), var(--bg-b));
+  background-attachment: fixed;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+#glitter { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+#lasers { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+.wrap {
+  position: relative; z-index: 1;
+  max-width: 720px; margin: 0 auto;
+  padding-block: 16px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 18px;
+}
+
+/* ---------- header ---------- */
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.logo {
+  font-family: var(--display); font-weight: 800; line-height: .9;
+  font-size: clamp(38px, 9vw, 60px); margin: 0; letter-spacing: -0.5px;
+  background: linear-gradient(100deg, var(--pink) 0%, #ff7cc8 25%, var(--blue) 50%, #8fd6ff 70%, var(--pink) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 3px 0 #fff) drop-shadow(0 6px 10px rgba(255, 62, 165, .3));
+  animation: shimmer 6s linear infinite;
+}
+@keyframes shimmer { to { background-position: -250% 0; } }
+.hud { display: flex; gap: 8px; align-items: center; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--card); border-radius: 999px; padding: 6px 14px;
+  font-family: var(--display); font-weight: 800; font-size: 20px;
+  box-shadow: 0 3px 0 var(--pink-soft), 0 6px 14px rgba(58, 42, 122, .12);
+  font-variant-numeric: tabular-nums;
+}
+.icon-btn {
+  border: 0; cursor: pointer; width: 46px; height: 46px; border-radius: 50%;
+  background: var(--card); font-size: 22px; color: var(--ink);
+  box-shadow: 0 3px 0 var(--blue-soft), 0 6px 14px rgba(58, 42, 122, .12);
+}
+
+/* ---------- shared bits ---------- */
+.panel {
+  background: var(--card); border-radius: 28px; padding: 22px;
+  box-shadow: 0 6px 0 var(--pink-soft), 0 18px 40px rgba(58, 42, 122, .15);
+  display: flex; flex-direction: column; gap: 16px;
+}
+h2 { font-family: var(--display); font-weight: 800; font-size: 28px; margin: 0; line-height: 1.1; text-wrap: balance; }
+.sub { margin: 0; color: var(--ink-soft); font-size: 17px; }
+.label { font-size: 13px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ink-soft); }
+
+.glitter-btn {
+  border: 0; cursor: pointer; color: #fff;
+  font-family: var(--display); font-weight: 800; font-size: 26px;
+  padding: 14px 28px; border-radius: 999px;
+  background:
+    linear-gradient(180deg, #ff86c8 0%, var(--pink) 45%, var(--pink-deep) 100%);
+  box-shadow: 0 5px 0 #b30d66, 0 10px 20px rgba(224, 19, 127, .35);
+  transition: transform .1s, box-shadow .1s;
+}
+.glitter-btn.blue {
+  background: linear-gradient(180deg, #7dd6ff 0%, var(--blue) 45%, var(--blue-deep) 100%);
+  box-shadow: 0 5px 0 #0f56a8, 0 10px 20px rgba(22, 119, 224, .35);
+}
+.glitter-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #b30d66; }
+.glitter-btn.blue:active { box-shadow: 0 1px 0 #0f56a8; }
+button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
+
+/* shared glossy candy shine */
+.glitter-btn, .chip, .focus-tile, .key.go { position: relative; overflow: hidden; }
+.glitter-btn::before, .chip[aria-pressed="true"]::before, .focus-tile::before, .key.go::before {
+  content: ""; position: absolute; left: 7%; right: 7%; top: 4px; height: 44%;
+  border-radius: 999px 999px 40% 40% / 999px 999px 30% 30%;
+  background: linear-gradient(rgba(255,255,255,.55), rgba(255,255,255,.04));
+  pointer-events: none;
+}
+.focus-tile::before { height: 26%; top: 5px; border-radius: 18px 18px 40px 40px; }
+.focus-tile > * { position: relative; }
+.glitter-btn, .chip[aria-pressed="true"], .focus-tile, .key.go { text-shadow: 0 2px 0 rgba(58, 20, 90, .22); }
+
+
+/* ---------- start screen ---------- */
+.chips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.chip {
+  border: 3px solid var(--blue-soft); background: #f7fbff; color: var(--ink);
+  border-radius: 18px; padding: 10px 0; cursor: pointer;
+  font-family: var(--display); font-weight: 800; font-size: 26px;
+  transition: transform .1s;
+}
+.chip[aria-pressed="true"] {
+  border-color: var(--pink); color: #fff;
+  background: linear-gradient(180deg, #ff86c8 0%, var(--pink) 50%, var(--pink-deep) 100%);
+  box-shadow: 0 4px 0 #b30d66;
+}
+.chip:active { transform: scale(.94); }
+.chip.all { font-size: 20px; grid-column: 1 / -1; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.toggle { display: inline-flex; background: var(--blue-soft); border-radius: 999px; padding: 4px; }
+.toggle button {
+  border: 0; background: transparent; cursor: pointer; color: var(--ink);
+  font-family: var(--display); font-weight: 800; font-size: 18px; padding: 8px 18px; border-radius: 999px;
+}
+.toggle button[aria-pressed="true"] { background: var(--card); box-shadow: 0 2px 6px rgba(58,42,122,.18); color: var(--pink-deep); }
+.start-actions { display: flex; justify-content: center; }
+.book { display: flex; flex-wrap: wrap; gap: 8px; min-height: 52px; align-items: center; }
+.sticker {
+  width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 30px;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--pink-soft) 70%);
+  box-shadow: 0 3px 0 var(--blue-soft);
+}
+.sticker.empty { background: repeating-conic-gradient(var(--blue-soft) 0 10deg, #f3faff 10deg 20deg); opacity: .6; font-size: 20px; color: var(--ink-soft); }
+
+/* ---------- play screen ---------- */
+.progress { height: 18px; background: var(--card); border-radius: 999px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(58,42,122,.12); }
+.progress > div {
+  height: 100%; width: 0; border-radius: 999px; transition: width .4s ease;
+  background: linear-gradient(90deg, var(--pink), #b44dff, var(--blue));
+  box-shadow: inset 0 4px 0 rgba(255,255,255,.4);
+}
+.card {
+  position: relative; text-align: center;
+  padding: 26px 16px 22px;
+  background:
+    radial-gradient(circle at 10% 15%, var(--pink-soft) 0 8px, transparent 9px),
+    radial-gradient(circle at 92% 80%, var(--blue-soft) 0 12px, transparent 13px),
+    var(--card);
+}
+.problem {
+  font-family: var(--display); font-weight: 800; line-height: 1;
+  font-size: clamp(72px, 19vw, 140px); margin: 4px 0 0;
+  display: flex; justify-content: center; align-items: center; gap: .18em; flex-wrap: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.problem .a { color: var(--pink); }
+.problem .b { color: var(--blue); }
+.problem .op { color: var(--ink-soft); font-size: .7em; }
+.problem .ans {
+  min-width: 1.3em; padding: 0 .1em; border-radius: 22px;
+  border: 5px dashed var(--pink-soft); color: var(--ink);
+}
+.problem .ans.filled { border-style: solid; border-color: var(--blue-soft); }
+.problem .ans.right { border-color: var(--good); color: var(--good); }
+.card-tools { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; }
+.card-tools .icon-btn { width: 42px; height: 42px; font-size: 19px; }
+.feedback { font-family: var(--display); font-weight: 800; font-size: 26px; min-height: 36px; margin: 6px 0 0; }
+.feedback.good { color: var(--good); }
+.feedback.try { color: var(--pink-deep); }
+.dots { display: flex; justify-content: center; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+.dot-group { display: flex; flex-wrap: wrap; gap: 6px; max-width: 150px; justify-content: center; }
+.dot { width: 22px; height: 22px; border-radius: 50%; animation: pop .3s backwards; }
+.dot.p { background: radial-gradient(circle at 35% 30%, #ffb3dc, var(--pink)); }
+.dot.q { background: radial-gradient(circle at 35% 30%, #b5e4ff, var(--blue)); }
+.dots .plus { font-family: var(--display); font-weight: 800; font-size: 28px; color: var(--ink-soft); }
+@keyframes pop { from { transform: scale(0); } }
+
+.choices { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.choice {
+  border: 0; cursor: pointer; color: #fff; border-radius: 26px; padding: 14px 0;
+  position: relative; overflow: hidden; text-shadow: 0 3px 0 rgba(58, 20, 90, .22);
+  font-family: var(--display); font-weight: 800; font-size: clamp(44px, 11vw, 64px); line-height: 1.1;
+  transition: transform .12s, opacity .2s;
+}
+.choice:nth-child(4n+1), .choice:nth-child(4n+4) {
+  background: linear-gradient(180deg, #ff86c8 0%, var(--pink) 45%, var(--pink-deep) 100%);
+  box-shadow: 0 6px 0 #b30d66;
+}
+.choice:nth-child(4n+2), .choice:nth-child(4n+3) {
+  background: linear-gradient(180deg, #7dd6ff 0%, var(--blue) 45%, var(--blue-deep) 100%);
+  box-shadow: 0 6px 0 #0f56a8;
+}
+/* glossy candy shine + one corner sparkle */
+.choice::before {
+  content: ""; position: absolute; left: 7%; right: 7%; top: 5px; height: 44%;
+  border-radius: 22px 22px 60px 60px / 22px 22px 30px 30px;
+  background: linear-gradient(rgba(255,255,255,.6), rgba(255,255,255,.05));
+  pointer-events: none;
+}
+.choice::after { content: "✦"; position: absolute; top: 9px; right: 16px; font-size: 18px; line-height: 1; color: #fff; opacity: .9; text-shadow: none; }
+.choice:active { transform: translateY(4px); }
+.choice.out { opacity: .25; pointer-events: none; }
+/* 1-minute mode */
+.choice.wrong { background: linear-gradient(180deg, #ff9a9a 0%, #ff5a5a 45%, #d92b2b 100%); box-shadow: 0 6px 0 #9e1c1c; }
+.choice.wrong::after { content: "\2716"; font-size: 20px; }
+.ans.miss { border-style: solid; border-color: var(--good); color: var(--good); }
+.clock {
+  align-self: center; display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--display); font-weight: 800; font-size: 34px; line-height: 1; color: var(--ink);
+  background: var(--card); border-radius: 999px; padding: 8px 24px; font-variant-numeric: tabular-nums;
+  box-shadow: 0 4px 0 var(--blue-soft), 0 8px 18px rgba(58, 42, 122, .15);
+}
+.clock.hurry { color: #fff; background: linear-gradient(180deg, #ff7a8a, #e0244a); box-shadow: 0 4px 0 #a8163a; animation: hurry .5s ease-in-out infinite alternate; }
+@keyframes hurry { to { transform: scale(1.08); } }
+.choice.win { background: linear-gradient(180deg, #7cf0c4 0%, #2fd59a 45%, var(--good) 100%); box-shadow: 0 6px 0 #138a60; }
+
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 420px; width: 100%; margin: 0 auto; }
+.key {
+  border: 0; cursor: pointer; border-radius: 20px; padding: 10px 0;
+  font-family: var(--display); font-weight: 800; font-size: 34px; color: var(--ink);
+  background: var(--card); box-shadow: 0 5px 0 var(--blue-soft), 0 8px 16px rgba(58,42,122,.1);
+}
+.key:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--blue-soft); }
+.key.go { color: #fff; background: linear-gradient(180deg, #ff86c8 0%, var(--pink) 45%, var(--pink-deep) 100%); box-shadow: 0 5px 0 #b30d66; }
+.key.del { color: var(--ink-soft); font-size: 28px; }
+
+.shake { animation: shake .45s; }
+@keyframes shake { 20%,60% { transform: translateX(-10px); } 40%,80% { transform: translateX(10px); } }
+.bounce { animation: bounce .5s; }
+@keyframes bounce { 40% { transform: scale(1.08) rotate(-2deg); } }
+
+/* ---------- results ---------- */
+.results { text-align: center; align-items: center; }
+.big-stars { font-size: clamp(30px, 8vw, 44px); letter-spacing: 2px; line-height: 1.2; overflow-wrap: anywhere; }
+.big-stars .off { filter: grayscale(1); opacity: .25; }
+.score { font-family: var(--display); font-weight: 800; font-size: 56px; line-height: 1; color: var(--pink); margin: 0; }
+.new-sticker { font-size: 88px; line-height: 1; animation: spinin .9s cubic-bezier(.3,1.6,.5,1); }
+@keyframes spinin { from { transform: scale(0) rotate(-200deg); } }
+.tricky { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.tricky span {
+  font-family: var(--display); font-weight: 800; font-size: 22px;
+  background: var(--pink-soft); color: var(--pink-deep); border-radius: 14px; padding: 4px 14px;
+}
+.result-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+/* ---------- focus zone (8s and 9s) ---------- */
+.focus-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.focus-tile {
+  border: 0; cursor: pointer; text-align: left; color: #fff; border-radius: 24px; padding: 16px; font-family: var(--body);
+  display: flex; flex-direction: column; gap: 2px; min-width: 0; transition: transform .1s;
+}
+.focus-tile:active { transform: translateY(4px); }
+.focus-tile .emo { font-size: 40px; line-height: 1.1; }
+.focus-tile .name { font-family: var(--display); font-weight: 800; font-size: clamp(22px, 6vw, 32px); line-height: 1.05; }
+.focus-tile .tag { font-size: 14px; }
+.focus-tile .best { font-family: var(--display); font-weight: 800; font-size: 15px; margin-top: 8px; background: rgba(255,255,255,.28); border-radius: 999px; padding: 2px 10px; align-self: flex-start; }
+/* nine family tiles in a 3x3 grid, challenge tile spans the row */
+.focus-tiles { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.focus-tile { align-items: center; text-align: center; padding: 12px 4px 10px; border-radius: 22px; gap: 0; }
+.focus-tile .emo { font-size: 32px; }
+.focus-tile .num { font-family: var(--display); font-weight: 800; font-size: 34px; line-height: 1; }
+.focus-tile .name { font-size: 13px; font-weight: 800; line-height: 1.15; }
+.focus-tile .best { align-self: center; font-size: 12px; margin-top: 6px; padding: 1px 8px; }
+.focus-tile.challenge { grid-column: span 2; flex-direction: row; justify-content: center; gap: 10px; padding: 12px; text-align: left; }
+.focus-tile.challenge .emo { font-size: 38px; }
+.focus-tile.challenge .num { font-size: clamp(18px, 5vw, 26px); }
+.focus-tile.challenge .name { font-size: 13px; }
+.focus-tile.challenge .best { align-self: flex-start; }
+.ch-text { display: flex; flex-direction: column; min-width: 0; }
+.timer { height: 12px; width: 100%; max-width: 320px; margin: 10px auto 0; border-radius: 999px; background: var(--blue-soft); overflow: hidden; }
+.timer > div { height: 100%; width: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--gold), #ff9a3c); box-shadow: inset 0 3px 0 rgba(255,255,255,.45); }
+.feedback.intro { color: var(--blue-deep); font-size: 22px; }
+.focus-badge { display: inline-block; font-family: var(--display); font-weight: 800; font-size: 18px; color: #fff; border-radius: 999px; padding: 4px 14px; box-shadow: none; position: absolute; top: 16px; left: 16px; }
+.card:has(.focus-badge:not([hidden])) { padding-top: 64px; }
+.trick { margin: 12px auto 0; max-width: 32ch; background: var(--blue-soft); border-radius: 18px; padding: 10px 14px; font-size: 18px; font-weight: 800; line-height: 1.35; }
+.trick b { color: var(--pink-deep); }
+
+@media (max-width: 420px) {
+  .chips { grid-template-columns: repeat(5, 1fr); gap: 7px; }
+  .chip { font-size: 22px; border-radius: 14px; }
+  .panel { padding: 18px; border-radius: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<canvas id="glitter" aria-hidden="true"></canvas>
+<div class="wrap">
+  <header>
+    <h1 class="logo">Sparkle<br>Sums</h1>
+    <div class="hud">
+      <span class="pill" title="Stars this round"><span aria-hidden="true">⭐</span><span id="starCount">0</span></span>
+      <span class="pill" title="Correct in a row"><span aria-hidden="true">🔥</span><span id="streakCount">0</span></span>
+      <button class="icon-btn" id="soundBtn" aria-label="Sound on" title="Sound">🔊</button>
+    </div>
+  </header>
+
+  <!-- START -->
+  <section class="panel" id="startScreen">
+    <div>
+      <h2>Fact Families</h2>
+      <p class="sub">Pick a number to practice. Each one has its own trick!</p>
+    </div>
+    <div class="focus-tiles" id="families"></div>
+    <div>
+      <h2>Or mix your own facts</h2>
+      <p class="sub">Tap the cards from your flashcard pile. Pink ones are in!</p>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="row" style="justify-content: space-between;">
+      <div class="row">
+        <span class="label">Answer by</span>
+        <div class="toggle" id="modeToggle">
+          <button data-mode="pick" aria-pressed="true">Tapping</button>
+          <button data-mode="type" aria-pressed="false">Typing</button>
+        </div>
+      </div>
+      <div class="row">
+        <span class="label">Round</span>
+        <div class="toggle" id="lenToggle">
+          <button data-len="10" aria-pressed="true">10</button>
+          <button data-len="20" aria-pressed="false">20</button>
+          <button data-len="60" aria-pressed="false">⏱️ 1 Min</button>
+        </div>
+      </div>
+    </div>
+    <div class="start-actions"><button class="glitter-btn" id="startBtn">Let's Sparkle! ✨</button></div>
+    <div>
+      <span class="label">My sticker book</span>
+      <p class="sub" style="font-size:15px;margin-top:4px;">Get 7 or more stars in a round to win a sticker.</p>
+    </div>
+    <div class="book" id="book"></div>
+  </section>
+
+  <!-- PLAY -->
+  <section id="playScreen" hidden style="display:flex;flex-direction:column;gap:16px;">
+    <div class="clock" id="clock" hidden><span aria-hidden="true">⏱️</span><span id="clockNum">60</span></div>
+    <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+    <div class="panel card" id="card">
+      <div class="card-tools">
+        <button class="icon-btn" id="hintBtn" aria-label="Show me dots" title="Show me dots">💡</button>
+      </div>
+      <div><span class="focus-badge" id="focusBadge" hidden></span></div>
+      <span class="label" id="cardNum">Card 1 of 10</span>
+      <div class="timer" id="timer" hidden><div id="timerFill"></div></div>
+      <div class="problem" aria-live="polite">
+        <span class="a" id="numA">3</span><span class="op">+</span><span class="b" id="numB">2</span><span class="op">=</span><span class="ans" id="ans">?</span>
+      </div>
+      <div class="dots" id="dots" hidden></div>
+      <p class="trick" id="trick" hidden></p>
+      <p class="feedback" id="feedback" aria-live="assertive"></p>
+    </div>
+    <div class="choices" id="choices"></div>
+    <div class="keypad" id="keypad" hidden></div>
+    <div style="display:flex;justify-content:center;">
+      <button class="toggle" style="border:0;cursor:pointer;font-family:var(--display);font-weight:800;font-size:16px;padding:8px 18px;color:var(--ink-soft);" id="quitBtn">Back to start</button>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section class="panel results" id="resultScreen" hidden>
+    <h2 id="resultTitle">Amazing job!</h2>
+    <p class="score" id="resultScore">8 / 10</p>
+    <p class="sub" id="resultBonus" hidden></p>
+    <div class="big-stars" id="resultStars"></div>
+    <div id="stickerWin" hidden>
+      <div class="new-sticker" id="newSticker">🦄</div>
+      <p class="sub">New sticker for your book!</p>
+    </div>
+    <div id="trickyWrap" hidden>
+      <span class="label">Tricky ones to practice</span>
+      <div class="tricky" id="tricky" style="margin-top:8px;"></div>
+    </div>
+    <div class="result-actions">
+      <button class="glitter-btn" id="againBtn">Play again</button>
+      <button class="glitter-btn blue" id="changeBtn">Pick facts</button>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const STICKERS = ['🦄','🌈','🦋','🍭','👑','🌸','🐬','🧁','💎','🎀','🌙','🐱','🍓','🪐','🐰','🌟','🍩','🦩','🐳','🌺'];
+  const PRAISE = ['Sparkly!', 'You got it!', 'Super star!', 'Yes!', 'Glitter-tastic!', 'Amazing!', 'Wow!', 'Brilliant!', 'Nailed it!'];
+  const TRY = ['So close! Try again', 'Oops! One more try', 'Almost! Try again'];
+  const FAMILIES = [
+    { n: 1, emo: '🐝', name: 'Buzzy 1s',      fact: 'Just one more, buzz buzz!',  c: ['#ff8fcf', '#ff3ea5', '#e0137f'], sh: '#b30d66' },
+    { n: 2, emo: '🐧', name: 'Penguin 2s',    fact: 'Penguins waddle on 2 feet!', c: ['#7dd6ff', '#29b0ff', '#1677e0'], sh: '#0f56a8' },
+    { n: 3, emo: '🦖', name: 'Dino 3s',       fact: 'A triceratops has 3 horns!', c: ['#d59bff', '#b44dff', '#8a2be2'], sh: '#6a1fb0' },
+    { n: 4, emo: '🐶', name: 'Puppy 4s',      fact: 'A puppy has 4 paws!',        c: ['#6ff0d8', '#1fc8b0', '#0e9c8a'], sh: '#0a766a' },
+    { n: 5, emo: '⭐', name: 'Star 5s',       fact: 'A star has 5 points!',       c: ['#ffb08a', '#ff7a59', '#f0503c'], sh: '#b8392a' },
+    { n: 6, emo: '🐞', name: 'Ladybug 6s',    fact: 'A ladybug has 6 legs!',      c: ['#ff9ab8', '#ff4f86', '#e02462'], sh: '#a8164a' },
+    { n: 7, emo: '🌈', name: 'Rainbow 7s',    fact: 'A rainbow has 7 colors!',    c: ['#8fb4ff', '#5b7cff', '#3d4fe0'], sh: '#2e38a8' },
+    { n: 8, emo: '🐙', name: 'Super 8s',      fact: 'An octopus has 8 arms!',     c: ['#ff8ccc', '#d65cf0', '#a63cf0'], sh: '#8a2bc4' },
+    { n: 9, emo: '🐱', name: 'Nine Lives 9s', fact: 'A cat has 9 lives!',         c: ['#7de0ff', '#3fa0ff', '#4d6bff'], sh: '#2e45c4' },
+    { n: 10, emo: '🙌', name: 'High Five 10s', fact: 'Two hands make 10 fingers!', c: ['#ffd36b', '#ffab1f', '#f08a00'], sh: '#b86600' }
+  ];
+  const CHALLENGE = { n: 'challenge', emo: '🏆', name: 'Super Sparkle Challenge', fact: 'Every fact, all mixed up. Beat the clock!', c: ['#ff3ea5', '#b44dff', '#29b0ff'], sh: '#5a2bb0' };
+  const CHALLENGE_SECONDS = 10;
+  const famOf = (k) => k === 'challenge' ? CHALLENGE : FAMILIES.find(f => f.n === k);
+  const famBg = (f) => f === CHALLENGE ? `linear-gradient(100deg, ${f.c.join(', ')})` : `linear-gradient(180deg, ${f.c[0]} 0%, ${f.c[1]} 55%, ${f.c[2]} 100%)`;
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('sparkle-sums:' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('sparkle-sums:' + k, JSON.stringify(v)); } catch {} }
+  };
+
+  const S = {
+    addends: new Set(store.get('addends', [1,2,3,4,5,6,7,8,9,10])),
+    mode: store.get('mode', 'pick'),
+    len: store.get('len', 10),
+    sound: store.get('sound', true),
+    book: store.get('book', []),
+    queue: [], idx: 0, stars: 0, streak: 0, tries: 0, typed: '', locked: false,
+    missed: new Map(), firstTry: 0, focus: null, best: store.get('best', {})
+  };
+
+  /* ---------- sound ---------- */
+  let ac;
+  function tone(freq, start, dur, type = 'sine', vol = .18, to = 0) {
+    if (!S.sound) return;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type;
+      const t = ac.currentTime + start;
+      o.frequency.setValueAtTime(freq, t);
+      if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .02);
+      g.gain.exponentialRampToValueAtTime(.001, t + dur);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + .05);
+    } catch {}
+  }
+  // bouncy "ta-da": quick rising major arpeggio with a bell layer, then a sparkle shimmer
+  const chime = () => {
+    [[1046, 0], [1318, .07], [1568, .14], [2093, .23]].forEach(([f, t]) => { tone(f, t, .3, 'triangle', .13); tone(f * 2, t, .16, 'sine', .035); });
+    [2637, 3136, 3520, 4186, 3520, 4186].forEach((f, i) => tone(f, .36 + i * .045, .22, 'sine', .045));
+  };
+  const boop = () => { tone(330, 0, .18, 'sine', .15); tone(262, .14, .25, 'sine', .15); };
+  const fanfare = () => {
+    [[784, 0], [988, .1], [1175, .2], [1568, .32], [1175, .46], [1568, .56], [2093, .7]].forEach(([f, t]) => { tone(f, t, .4, 'triangle', .12); tone(f / 2, t, .3, 'sine', .05); });
+    [3136, 3520, 4186, 4699, 4186, 4699, 5274].forEach((f, i) => tone(f, .9 + i * .05, .25, 'sine', .04));
+  };
+
+  // happy sound effects: a few different ones take turns so right answers stay fresh
+  const sparkleSweep = () => [1568, 1760, 2093, 2349, 2637, 3136, 3520, 4186].forEach((f, i) => tone(f, i * .035, .25, 'sine', .07));
+  const bubblePops = () => { [0, .1, .2].forEach((t, i) => tone(500 + i * 220, t, .12, 'sine', .17, 1400 + i * 400)); tone(2093, .32, .3, 'triangle', .1); };
+  const bells = () => [[1318, 0], [1568, .1], [2093, .2], [2637, .2]].forEach(([f, t]) => { tone(f, t, .6, 'sine', .1); tone(f * 3, t, .2, 'sine', .02); });
+  const boing = () => { tone(220, 0, .28, 'triangle', .14, 880); [2093, 2637, 3136].forEach((f, i) => tone(f, .22 + i * .06, .25, 'sine', .07)); };
+  const HAPPY = [chime, sparkleSweep, bubblePops, bells, boing];
+  let lastHappy = -1;
+  function happySound() {
+    let i; do { i = (Math.random() * HAPPY.length) | 0; } while (i === lastHappy && HAPPY.length > 1);
+    lastHappy = i; HAPPY[i]();
+  }
+  const levelUp = () => [1046, 1175, 1318, 1568, 1760, 2093].forEach((f, i) => { tone(f, i * .06, .2, 'square', .045); tone(f * 2, i * .06, .2, 'sine', .04); });
+  const zap = () => { tone(2400, 0, .16, 'sawtooth', .04, 500); tone(3200, .02, .12, 'sine', .05, 900); sparkleSweep(); };
+  const whoosh = () => { tone(260, 0, .4, 'sine', .1, 1600); [2093, 2637, 3136, 4186].forEach((f, i) => tone(f, .32 + i * .05, .22, 'sine', .05)); };
+
+  /* ---------- glitter canvas ---------- */
+  const cv = $('glitter'), cx = cv.getContext('2d');
+  const COLORS = ['#ff3ea5', '#29b0ff', '#ffffff', '#ffc93c', '#ff8fd0', '#8fd6ff'];
+  let W, H, dpr, twinkles = [], bursts = [];
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = innerWidth; H = innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const n = Math.round(Math.min(90, (W * H) / 9000));
+    twinkles = Array.from({ length: n }, () => ({
+      x: Math.random() * W, y: Math.random() * H, r: 2 + Math.random() * 5,
+      c: COLORS[(Math.random() * COLORS.length) | 0], ph: Math.random() * 6.28, sp: .6 + Math.random() * 1.6
+    }));
+    if (reduceMotion) draw(0);
+  }
+  function star(x, y, r, c, a, rot = 0) {
+    cx.save(); cx.globalAlpha = a; cx.fillStyle = c; cx.translate(x, y); cx.rotate(rot);
+    cx.beginPath();
+    for (let i = 0; i < 8; i++) { const rr = i % 2 ? r * .28 : r; const an = i * Math.PI / 4; cx.lineTo(Math.cos(an) * rr, Math.sin(an) * rr); }
+    cx.closePath(); cx.fill();
+    if (c === '#ffffff') { cx.shadowColor = '#ff8fd0'; cx.shadowBlur = 6; cx.fill(); }
+    cx.restore();
+  }
+  function draw(t) {
+    cx.clearRect(0, 0, W, H);
+    for (const s of twinkles) {
+      const a = reduceMotion ? .6 : .25 + .75 * Math.abs(Math.sin(s.ph + t / 1000 * s.sp));
+      star(s.x, s.y, s.r, s.c, a);
+    }
+    for (let i = bursts.length - 1; i >= 0; i--) {
+      const p = bursts[i];
+      p.x += p.vx; p.y += p.vy; p.vy += .18; p.vx *= .985; p.life -= 1; p.rot += p.vr;
+      if (p.life <= 0) { bursts.splice(i, 1); continue; }
+      const a = Math.min(1, p.life / 30);
+      if (p.shape === 'star') star(p.x, p.y, p.r, p.c, a, p.rot);
+      else { cx.save(); cx.globalAlpha = a; cx.fillStyle = p.c; cx.translate(p.x, p.y); cx.rotate(p.rot); cx.fillRect(-p.r, -p.r / 2.5, p.r * 2, p.r / 1.25); cx.restore(); }
+    }
+  }
+  function loop(t) { draw(t); requestAnimationFrame(loop); }
+  function burst(x, y, n = 70) {
+    if (reduceMotion) return;
+    for (let i = 0; i < n; i++) {
+      const an = Math.random() * Math.PI * 2, sp = 3 + Math.random() * 8;
+      bursts.push({ x, y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp - 4, r: 3 + Math.random() * 6,
+        c: COLORS[(Math.random() * COLORS.length) | 0], life: 50 + Math.random() * 40,
+        rot: Math.random() * 6, vr: (Math.random() - .5) * .3, shape: Math.random() < .55 ? 'star' : 'bit' });
+    }
+  }
+  addEventListener('resize', resize); resize();
+  if (!reduceMotion) requestAnimationFrame(loop);
+
+  /* ---------- laser show (end of every round, good or bad) ---------- */
+  const lz = document.createElement('canvas');
+  lz.id = 'lasers'; lz.setAttribute('aria-hidden', 'true'); document.body.appendChild(lz);
+  const lx = lz.getContext('2d');
+  const LASER_COLORS = ['#ff3ea5', '#29b0ff', '#b44dff', '#3dffb5', '#ffe14d', '#ff7cc8'];
+  let beams = [], laserStart = 0, laserEnd = 0, laserRunning = false;
+  function sizeLasers() { lz.width = innerWidth * dpr; lz.height = innerHeight * dpr; lx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  addEventListener('resize', sizeLasers);
+  const pew = (t) => { tone(1900, t, .16, 'square', .03, 320); tone(3800, t, .08, 'sine', .02, 900); };
+  function laserShow(ms) {
+    if (reduceMotion) return;
+    sizeLasers();
+    const w = innerWidth, h = innerHeight;
+    // beams fan out from the bottom corners, bottom middle and top corners
+    const origins = [[0, h], [w, h], [w / 2, h + 10], [0, -10], [w, -10]];
+    beams = [];
+    origins.forEach(([x, y], oi) => {
+      for (let k = 0; k < 4; k++) beams.push({
+        x, y, base: Math.atan2(h * .45 - y, w / 2 - x), spread: .55 + Math.random() * .5,
+        speed: 1.1 + Math.random() * 1.9, ph: Math.random() * 6.28 + k * 1.6,
+        c: LASER_COLORS[(oi * 4 + k) % LASER_COLORS.length]
+      });
+    });
+    laserStart = performance.now(); laserEnd = laserStart + ms;
+    const pews = Math.round(ms / 260);
+    for (let i = 0; i < pews; i++) pew(.25 + i * .24 + Math.random() * .06);
+    if (!laserRunning) { laserRunning = true; requestAnimationFrame(drawLasers); }
+  }
+  function stopLasers() { laserEnd = 0; }
+  function drawLasers(t) {
+    const w = innerWidth, h = innerHeight;
+    lx.clearRect(0, 0, w, h);
+    const left = laserEnd - t;
+    if (left <= 0) { laserRunning = false; return; }
+    const fade = Math.max(0, Math.min(1, (t - laserStart) / 300, left / 900));
+    const len = Math.hypot(w, h) * 1.2;
+    // dim the lights so the neon pops
+    lx.fillStyle = 'rgba(36, 10, 72, ' + (.5 * fade) + ')'; lx.fillRect(0, 0, w, h);
+    lx.globalCompositeOperation = 'lighter';
+    for (const b of beams) {
+      const ang = b.base + Math.sin(b.ph + t / 1000 * b.speed) * b.spread;
+      const ex = b.x + Math.cos(ang) * len, ey = b.y + Math.sin(ang) * len;
+      lx.beginPath(); lx.moveTo(b.x, b.y); lx.lineTo(ex, ey);
+      lx.strokeStyle = b.c;
+      lx.globalAlpha = .18 * fade; lx.lineWidth = 16; lx.stroke();   // soft glow
+      lx.globalAlpha = .85 * fade; lx.lineWidth = 3.5; lx.stroke();  // beam
+      lx.strokeStyle = '#ffffff'; lx.globalAlpha = .7 * fade; lx.lineWidth = 1; lx.stroke(); // hot core
+    }
+    // glowing emitters
+    for (const [x, y] of [[0, h], [w, h], [w / 2, h], [0, 0], [w, 0]]) {
+      const g = lx.createRadialGradient(x, y, 0, x, y, 60);
+      g.addColorStop(0, `rgba(255,255,255,${.8 * fade})`); g.addColorStop(1, 'rgba(255,62,165,0)');
+      lx.globalAlpha = 1; lx.fillStyle = g; lx.fillRect(x - 60, y - 60, 120, 120);
+    }
+    lx.globalCompositeOperation = 'source-over'; lx.globalAlpha = 1;
+    requestAnimationFrame(drawLasers);
+  }
+
+  /* ---------- helpers ---------- */
+  const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const pick = (a) => a[(Math.random() * a.length) | 0];
+  function show(id) { ['startScreen', 'playScreen', 'resultScreen'].forEach(s => $(s).hidden = s !== id); scrollTo({ top: 0 }); }
+  function anim(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+  function updateHud() { $('starCount').textContent = S.stars; $('streakCount').textContent = S.streak; }
+  function centerOf(el) { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }
+
+  /* ---------- start screen ---------- */
+  function renderChips() {
+    const box = $('chips'); box.innerHTML = '';
+    for (let n = 1; n <= 10; n++) {
+      const b = document.createElement('button');
+      b.className = 'chip'; b.textContent = '+' + n; b.setAttribute('aria-pressed', S.addends.has(n));
+      b.onclick = () => { S.addends.has(n) ? S.addends.delete(n) : S.addends.add(n); store.set('addends', [...S.addends]); renderChips(); };
+      box.appendChild(b);
+    }
+    const all = document.createElement('button');
+    const allOn = S.addends.size === 10;
+    all.className = 'chip all'; all.textContent = allOn ? 'None' : 'All';
+    all.setAttribute('aria-pressed', 'false');
+    all.onclick = () => { S.addends = new Set(allOn ? [] : [1,2,3,4,5,6,7,8,9,10]); store.set('addends', [...S.addends]); renderChips(); };
+    box.appendChild(all);
+    $('startBtn').disabled = S.addends.size === 0;
+    $('startBtn').style.opacity = S.addends.size ? 1 : .5;
+  }
+  function renderBook() {
+    const box = $('book'); box.innerHTML = '';
+    S.book.forEach(s => { const d = document.createElement('div'); d.className = 'sticker'; d.textContent = s; box.appendChild(d); });
+    const blanks = S.book.length < 5 ? 5 - S.book.length : (S.book.length % 5 ? 5 - (S.book.length % 5) : 1);
+    for (let i = 0; i < blanks; i++) { const d = document.createElement('div'); d.className = 'sticker empty'; d.textContent = '?'; box.appendChild(d); }
+  }
+  function setToggle(groupId, attr, val) {
+    $(groupId).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset[attr] == val));
+  }
+  $('modeToggle').onclick = (e) => { const m = e.target.dataset.mode; if (!m) return; S.mode = m; store.set('mode', m); setToggle('modeToggle', 'mode', m); };
+  $('lenToggle').onclick = (e) => { const l = +e.target.closest('button')?.dataset.len; if (!l) return; S.len = l; store.set('len', l); setToggle('lenToggle', 'len', l); renderBest(); };
+  function setSound(on) {
+    S.sound = on; store.set('sound', on);
+    $('soundBtn').textContent = on ? '🔊' : '🔇';
+    $('soundBtn').setAttribute('aria-label', on ? 'Sound on' : 'Sound off');
+  }
+  $('soundBtn').onclick = () => { setSound(!S.sound); if (S.sound) chime(); };
+
+  /* ---------- game ---------- */
+  function startRound() {
+    const fam = famOf(S.focus), isCh = S.focus === 'challenge';
+    const addends = isCh ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : S.focus ? [S.focus] : [...S.addends];
+    if (!addends.length) return;
+    const timed = S.len === 60;
+    const len = timed ? 300 : isCh ? 20 : S.len;   // 1-minute mode: more cards than anyone can answer
+    const pool = [];
+    // challenge: no +0 freebies, and numbers can come in either order (3 + 8 or 8 + 3)
+    for (const b of addends) for (let a = isCh ? 2 : 0; a <= 10; a++) pool.push(isCh && Math.random() < .5 ? { a: b, b: a } : { a, b });
+    let q = [];
+    while (q.length < len) q = q.concat(shuffle(pool.slice()));
+    q = q.slice(0, len);
+    for (let i = 1; i < q.length; i++) if (q[i].a === q[i - 1].a && q[i].b === q[i - 1].b) { const j = (i + 2) % q.length; [q[i], q[j]] = [q[j], q[i]]; }
+    Object.assign(S, { queue: q, idx: 0, stars: 0, streak: 0, firstTry: 0, lightning: 0, roundLen: len, missed: new Map(), timed, tried: 0, over: false });
+    const badge = $('focusBadge');
+    badge.hidden = !fam;
+    if (fam) { badge.style.background = famBg(fam); badge.textContent = `${fam.emo} ${isCh ? 'Challenge' : fam.name}`; }
+    $('hintBtn').hidden = isCh;
+    updateHud(); show('playScreen');
+    $('choices').hidden = S.mode !== 'pick'; $('keypad').hidden = S.mode !== 'type';
+    nextCard();
+    if (timed) startClock(); else { stopClock(); $('clock').hidden = true; }
+    if (fam) {
+      $('feedback').textContent = fam.fact; $('feedback').className = 'feedback intro';
+      whoosh();
+    }
+  }
+
+  /* ---------- 1-minute clock ---------- */
+  const SPEED_SECONDS = 60;
+  const tick = () => tone(1400, 0, .05, 'square', .045);
+  const timeBells = () => [0, .18, .36].forEach(t => { tone(1568, t, .3, 'triangle', .13); tone(3136, t, .15, 'sine', .04); });
+  function startClock() {
+    stopClock();
+    const c = $('clock');
+    c.hidden = false; c.classList.remove('hurry');
+    $('clockNum').textContent = SPEED_SECONDS;
+    $('bar').style.width = '100%';
+    S.endAt = performance.now() + SPEED_SECONDS * 1000;
+    let shown = SPEED_SECONDS;
+    S.clockId = setInterval(() => {
+      const left = Math.max(0, S.endAt - performance.now());
+      const sec = Math.ceil(left / 1000);
+      $('bar').style.width = (left / (SPEED_SECONDS * 1000) * 100) + '%';
+      if (sec !== shown) {
+        shown = sec; $('clockNum').textContent = sec;
+        if (sec <= 10 && sec > 0) { c.classList.add('hurry'); tick(); }
+      }
+      if (left <= 0) { stopClock(); timeUp(); }
+    }, 100);
+  }
+  function stopClock() { if (S.clockId) { clearInterval(S.clockId); S.clockId = null; } }
+  function timeUp() {
+    S.locked = true; S.over = true;
+    $('clock').classList.remove('hurry');
+    $('feedback').textContent = '⏰ TIME!'; $('feedback').className = 'feedback good';
+    timeBells();
+    setTimeout(finish, 1000);
+  }
+
+  function startTimer() {
+    const t = $('timer'), fill = $('timerFill');
+    t.hidden = S.focus !== 'challenge' || S.timed;
+    if (t.hidden) return;
+    fill.style.transition = 'none'; fill.style.width = '100%'; void fill.offsetWidth;
+    fill.style.transition = `width ${CHALLENGE_SECONDS}s linear`; fill.style.width = '0%';
+    S.cardStart = performance.now();
+  }
+  function stopTimer() {
+    const fill = $('timerFill');
+    if ($('timer').hidden) return Infinity;
+    fill.style.width = getComputedStyle(fill).width; fill.style.transition = 'none';
+    return (performance.now() - S.cardStart) / 1000;
+  }
+
+  function nextCard() {
+    if (S.over) return;
+    if (S.idx >= S.queue.length) return finish();
+    const { a, b } = S.queue[S.idx];
+    S.tries = 0; S.typed = ''; S.locked = false;
+    $('numA').textContent = a; $('numB').textContent = b;
+    const ans = $('ans'); ans.textContent = '?'; ans.className = 'ans';
+    $('feedback').textContent = ''; $('feedback').className = 'feedback';
+    $('dots').hidden = true; $('trick').hidden = true;
+    if (S.timed) $('cardNum').textContent = `✅ ${S.firstTry} right so far`;
+    else {
+      $('cardNum').textContent = `Card ${S.idx + 1} of ${S.queue.length}`;
+      $('bar').style.width = (S.idx / S.queue.length * 100) + '%';
+    }
+    anim($('card'), 'bounce');
+    startTimer();
+    if (S.mode === 'pick') renderChoices(a + b, a);
+    else renderKeypad();
+  }
+
+  function renderChoices(sum, a) {
+    const opts = new Set([sum]);
+    const near = shuffle([sum - 1, sum + 1, sum - 2, sum + 2, sum + 3, sum - 3, a, sum + 10 > 19 ? sum - 4 : sum + 10].filter(n => n >= 0 && n <= 20 && n !== sum));
+    for (const n of near) { if (opts.size >= 4) break; opts.add(n); }
+    const box = $('choices'); box.innerHTML = '';
+    shuffle([...opts]).forEach(n => {
+      const b = document.createElement('button'); b.className = 'choice'; b.textContent = n;
+      b.onclick = () => answer(n, b);
+      box.appendChild(b);
+    });
+  }
+
+  function renderKeypad() {
+    const box = $('keypad');
+    if (box.childElementCount) return;
+    ['1','2','3','4','5','6','7','8','9','⌫','0','✓'].forEach(k => {
+      const b = document.createElement('button');
+      b.className = 'key' + (k === '✓' ? ' go' : k === '⌫' ? ' del' : '');
+      b.textContent = k; b.setAttribute('aria-label', k === '⌫' ? 'Delete' : k === '✓' ? 'Check' : k);
+      b.onclick = () => keyPress(k);
+      box.appendChild(b);
+    });
+  }
+  function keyPress(k) {
+    if (S.locked) return;
+    const ans = $('ans');
+    if (k === '⌫') S.typed = S.typed.slice(0, -1);
+    else if (k === '✓') { if (S.typed) answer(+S.typed, $('keypad').lastChild); return; }
+    else if (S.typed.length < 2) S.typed += k;
+    ans.textContent = S.typed || '?';
+    ans.classList.toggle('filled', !!S.typed);
+  }
+  addEventListener('keydown', (e) => {
+    if ($('playScreen').hidden || S.mode !== 'type') return;
+    if (/^[0-9]$/.test(e.key)) keyPress(e.key);
+    else if (e.key === 'Backspace') { e.preventDefault(); keyPress('⌫'); }
+    else if (e.key === 'Enter') keyPress('✓');
+  });
+
+  function showDots() {
+    const { a, b } = S.queue[S.idx];
+    const box = $('dots'); box.innerHTML = '';
+    const g = (n, cls) => { const d = document.createElement('div'); d.className = 'dot-group';
+      for (let i = 0; i < n; i++) { const s = document.createElement('span'); s.className = 'dot ' + cls; s.style.animationDelay = (i * .06) + 's'; d.appendChild(s); } return d; };
+    box.appendChild(g(a, 'p'));
+    const p = document.createElement('span'); p.className = 'plus'; p.textContent = '+'; box.appendChild(p);
+    box.appendChild(g(b, 'q'));
+    box.hidden = false;
+    showTrick();
+  }
+
+  // a strategy hint for every fact; the last step is always left for her
+  function trickFor(a, b) {
+    const big = Math.max(a, b), small = Math.min(a, b);
+    if (small === 0) return `<b>Zero trick:</b> adding 0 changes nothing!`;
+    if (a === 10 && b === 10) return `<b>Double 10s:</b> 10 and 10 more. Count by tens!`;
+    if (big === 10) return `<b>10 trick:</b> 10 + ${small} is a 1 with a ${small} after it!`;
+    if (big >= 8) return `<b>+${big} trick:</b> ${small} + 10 = ${small + 10}. Now count back ${10 - big}!`;
+    if (small === 1) return `<b>+1 trick:</b> just say the number after ${big}!`;
+    if (a === b) return `<b>Doubles!</b> Hold up ${a} fingers on each hand and count them all!`;
+    if (small === 2) return `<b>+2 trick:</b> start at ${big}, then say the next 2 numbers!`;
+    return `<b>Count on:</b> start at the big number, ${big}, and count up ${small} on your fingers!`;
+  }
+  function showTrick() {
+    const { a, b } = S.queue[S.idx];
+    const t = $('trick');
+    t.innerHTML = trickFor(a, b);
+    t.hidden = false;
+  }
+
+  function answer(n, btn) {
+    if (S.locked) return;
+    const { a, b } = S.queue[S.idx];
+    const sum = a + b, ans = $('ans'), fb = $('feedback');
+    if (n === sum) {
+      S.locked = true;
+      if (S.timed) S.tried++;
+      ans.textContent = sum; ans.className = 'ans right';
+      const secs = stopTimer();
+      const fast = S.tries === 0 && secs <= CHALLENGE_SECONDS;
+      if (S.tries === 0) { S.stars++; S.firstTry++; S.streak++; } else S.streak = 0;
+      if (fast) S.lightning++;
+      updateHud();
+      fb.textContent = S.tries === 0 ? (fast ? '⚡ Lightning fast!' : S.streak >= 3 && S.streak % 3 === 0 ? `${S.streak} in a row! 🔥` : pick(PRAISE)) : 'You figured it out!';
+      fb.className = 'feedback good';
+      if (S.mode === 'pick') btn.classList.add('win');
+      anim($('card'), 'bounce');
+      const [x, y] = centerOf(ans); burst(x, y, S.tries === 0 ? 80 : 35);
+      if (fast) zap(); else if (S.tries === 0 && S.streak >= 3 && S.streak % 3 === 0) levelUp(); else happySound();
+      setTimeout(() => { S.idx++; nextCard(); }, S.timed ? 650 : 1500);
+    } else if (S.timed) {
+      // 1-minute mode: mark the wrong pick red, show the right one, wiggle, move on
+      S.locked = true; S.tried++; S.streak = 0; updateHud();
+      const key = `${a} + ${b}`; S.missed.set(key, (S.missed.get(key) || 0) + 1);
+      if (S.mode === 'pick') {
+        btn.classList.add('wrong');
+        [...$('choices').children].forEach(c => { if (+c.textContent === sum) c.classList.add('win'); });
+      }
+      ans.textContent = sum; ans.className = 'ans miss';
+      fb.textContent = `Oops! It's ${sum}`; fb.className = 'feedback try';
+      anim($('card'), 'shake'); boop();
+      setTimeout(() => { S.idx++; nextCard(); }, 1100);
+    } else {
+      S.tries++; S.streak = 0; updateHud();
+      const key = `${a} + ${b}`; S.missed.set(key, (S.missed.get(key) || 0) + 1);
+      fb.textContent = pick(TRY); fb.className = 'feedback try';
+      anim($('card'), 'shake'); boop();
+      if (S.mode === 'pick') btn.classList.add('out');
+      else { S.typed = ''; ans.textContent = '?'; ans.className = 'ans'; }
+      if (S.tries >= 2) { showDots(); fb.textContent = 'Count the dots with me!'; }
+      else if (S.focus && S.focus !== 'challenge') showTrick();
+      // bring a missed fact back later in the round, once
+      if (S.tries === 1 && !S.queue.slice(S.idx + 1).some(q => q.a === a && q.b === b) && S.queue.length < S.roundLen + 5) {
+        S.queue.splice(Math.min(S.queue.length, S.idx + 3), 0, { a, b, again: true });
+      }
+    }
+  }
+
+  function finish() {
+    const isCh = S.focus === 'challenge';
+    let total, earned;
+    if (S.timed) {
+      // 1-minute mode: score is how many she got right; beat your own best
+      stopClock(); $('clock').hidden = true; $('bar').style.width = '0%';
+      const got = S.firstTry, key = (S.focus ?? 'mix') + ':min', prev = S.best[key];
+      const record = got > 0 && (!prev || got > prev.got);
+      if (record) { S.best[key] = { got }; store.set('best', S.best); }
+      total = 20;
+      $('resultTitle').textContent = record ? (prev ? 'NEW RECORD! 🏆' : 'You set a record! 🏆') : got >= 10 ? 'Speedy sparkler!' : 'Great try! Go again!';
+      $('resultScore').textContent = `${got} right!`;
+      $('resultBonus').hidden = false;
+      $('resultBonus').textContent = `⏱️ In 1 minute you answered ${S.tried} cards.` + (prev && !record ? ` Your best is ${prev.got}.` : '');
+      $('resultStars').innerHTML = got ? '⭐'.repeat(Math.min(got, 40)) : '<span class="off">⭐</span>';
+      earned = record || got >= 10;
+    } else {
+      $('bar').style.width = '100%';
+      total = S.queue.length;
+      const got = S.firstTry;
+      const ratio = got / total;
+      if (S.focus) {
+        const prev = S.best[S.focus];
+        if (!prev || ratio > prev.got / prev.total) { S.best[S.focus] = { got, total }; store.set('best', S.best); }
+      }
+      $('resultTitle').textContent = ratio === 1 ? (isCh ? 'CHALLENGE CHAMPION! You are a math superstar!' : 'PERFECT! You are a math superstar!') : ratio >= .7 ? 'Amazing job!' : ratio >= .4 ? 'Great work! Keep sparkling!' : 'Good practice! Let\'s go again!';
+      $('resultScore').textContent = `${got} / ${total}`;
+      $('resultBonus').hidden = !isCh;
+      $('resultBonus').textContent = `⚡ ${S.lightning} lightning-fast answers!`;
+      $('resultStars').innerHTML = Array.from({ length: total }, (_, i) => i < got ? '⭐' : '<span class="off">⭐</span>').join('');
+      earned = ratio >= .7;
+    }
+    $('stickerWin').hidden = !earned;
+    if (earned) {
+      const fresh = STICKERS.filter(s => !S.book.includes(s));
+      const s = pick(fresh.length ? fresh : STICKERS);
+      S.book.push(s); store.set('book', S.book);
+      $('newSticker').textContent = s;
+    }
+    const tricky = [...S.missed.keys()];
+    $('trickyWrap').hidden = !tricky.length;
+    $('tricky').innerHTML = tricky.map(k => { const [a, b] = k.split(' + ').map(Number); return `<span>${k} = ${a + b}</span>`; }).join('');
+    show('resultScreen');
+    fanfare();
+    laserShow(total >= 20 ? 6000 : 4500);
+    setTimeout(() => { burst(W * .25, H * .35, 70); burst(W * .75, H * .35, 70); if (earned) burst(W / 2, H * .5, 90); }, 150);
+  }
+
+  function renderBest() {
+    const box = $('families'); box.innerHTML = '';
+    [...FAMILIES, CHALLENGE].forEach(f => {
+      const isCh = f === CHALLENGE, timed = S.len === 60;
+      const b = timed ? S.best[f.n + ':min'] : S.best[f.n];
+      const best = timed ? (b ? `⏱️ Best ${b.got}` : '⏱️ New!') : b ? `Best ${b.got}/${b.total} ⭐` : isCh ? 'Can you beat it?' : 'New!';
+      const btn = document.createElement('button');
+      btn.className = 'focus-tile' + (isCh ? ' challenge' : '');
+      btn.style.background = famBg(f);
+      btn.style.boxShadow = `0 6px 0 ${f.sh}`;
+      btn.setAttribute('aria-label', `${f.name}. ${f.fact} ${best}`);
+      btn.innerHTML = isCh
+        ? `<span class="emo" aria-hidden="true">${f.emo}</span><span class="ch-text"><span class="num">${f.name}</span><span class="name">${f.fact}</span><span class="best">${best}</span></span>`
+        : `<span class="emo" aria-hidden="true">${f.emo}</span><span class="num">+${f.n}</span><span class="name">${f.name}</span><span class="best">${best}</span>`;
+      btn.onclick = () => { S.focus = f.n; startRound(); };
+      box.appendChild(btn);
+    });
+  }
+  function goHome() { S.focus = null; S.over = true; stopClock(); $('clock').hidden = true; stopTimer(); stopLasers(); renderBook(); renderBest(); show('startScreen'); }
+  $('startBtn').onclick = () => { S.focus = null; startRound(); };
+  $('againBtn').onclick = startRound;
+  $('changeBtn').onclick = goHome;
+  $('quitBtn').onclick = goHome;
+  $('hintBtn').onclick = showDots;
+
+  setToggle('modeToggle', 'mode', S.mode);
+  setToggle('lenToggle', 'len', S.len);
+  setSound(S.sound);
+  renderChips(); renderBook(); renderBest();
+})();
+</script>
