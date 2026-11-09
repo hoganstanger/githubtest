@@ -129,7 +129,7 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   box-shadow: 0 4px 0 #b30d66;
 }
 .chip:active { transform: scale(.94); }
-.chip.all { font-size: 20px; }
+.chip.all { font-size: 20px; grid-column: 1 / -1; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .toggle { display: inline-flex; background: var(--blue-soft); border-radius: 999px; padding: 4px; }
 .toggle button {
@@ -263,10 +263,10 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 .focus-tile .num { font-family: var(--display); font-weight: 800; font-size: 34px; line-height: 1; }
 .focus-tile .name { font-size: 13px; font-weight: 800; line-height: 1.15; }
 .focus-tile .best { align-self: center; font-size: 12px; margin-top: 6px; padding: 1px 8px; }
-.focus-tile.challenge { grid-column: 1 / -1; flex-direction: row; justify-content: center; gap: 14px; padding: 16px; text-align: left; margin-top: 4px; }
-.focus-tile.challenge .emo { font-size: 48px; }
-.focus-tile.challenge .num { font-size: clamp(22px, 6vw, 30px); }
-.focus-tile.challenge .name { font-size: 15px; }
+.focus-tile.challenge { grid-column: span 2; flex-direction: row; justify-content: center; gap: 10px; padding: 12px; text-align: left; }
+.focus-tile.challenge .emo { font-size: 38px; }
+.focus-tile.challenge .num { font-size: clamp(18px, 5vw, 26px); }
+.focus-tile.challenge .name { font-size: 13px; }
 .focus-tile.challenge .best { align-self: flex-start; }
 .ch-text { display: flex; flex-direction: column; min-width: 0; }
 .timer { height: 12px; width: 100%; max-width: 320px; margin: 10px auto 0; border-radius: 999px; background: var(--blue-soft); overflow: hidden; }
@@ -394,7 +394,8 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
     { n: 6, emo: '🐞', name: 'Ladybug 6s',    fact: 'A ladybug has 6 legs!',      c: ['#ff9ab8', '#ff4f86', '#e02462'], sh: '#a8164a' },
     { n: 7, emo: '🌈', name: 'Rainbow 7s',    fact: 'A rainbow has 7 colors!',    c: ['#8fb4ff', '#5b7cff', '#3d4fe0'], sh: '#2e38a8' },
     { n: 8, emo: '🐙', name: 'Super 8s',      fact: 'An octopus has 8 arms!',     c: ['#ff8ccc', '#d65cf0', '#a63cf0'], sh: '#8a2bc4' },
-    { n: 9, emo: '🐱', name: 'Nine Lives 9s', fact: 'A cat has 9 lives!',         c: ['#7de0ff', '#3fa0ff', '#4d6bff'], sh: '#2e45c4' }
+    { n: 9, emo: '🐱', name: 'Nine Lives 9s', fact: 'A cat has 9 lives!',         c: ['#7de0ff', '#3fa0ff', '#4d6bff'], sh: '#2e45c4' },
+    { n: 10, emo: '🙌', name: 'High Five 10s', fact: 'Two hands make 10 fingers!', c: ['#ffd36b', '#ffab1f', '#f08a00'], sh: '#b86600' }
   ];
   const CHALLENGE = { n: 'challenge', emo: '🏆', name: 'Super Sparkle Challenge', fact: 'Every fact, all mixed up. Beat the clock!', c: ['#ff3ea5', '#b44dff', '#29b0ff'], sh: '#5a2bb0' };
   const CHALLENGE_SECONDS = 10;
@@ -408,7 +409,7 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   };
 
   const S = {
-    addends: new Set(store.get('addends', [1,2,3,4,5,6,7,8,9])),
+    addends: new Set(store.get('addends', [1,2,3,4,5,6,7,8,9,10])),
     mode: store.get('mode', 'pick'),
     len: store.get('len', 10),
     sound: store.get('sound', true),
@@ -579,17 +580,17 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   /* ---------- start screen ---------- */
   function renderChips() {
     const box = $('chips'); box.innerHTML = '';
-    for (let n = 1; n <= 9; n++) {
+    for (let n = 1; n <= 10; n++) {
       const b = document.createElement('button');
       b.className = 'chip'; b.textContent = '+' + n; b.setAttribute('aria-pressed', S.addends.has(n));
       b.onclick = () => { S.addends.has(n) ? S.addends.delete(n) : S.addends.add(n); store.set('addends', [...S.addends]); renderChips(); };
       box.appendChild(b);
     }
     const all = document.createElement('button');
-    const allOn = S.addends.size === 9;
+    const allOn = S.addends.size === 10;
     all.className = 'chip all'; all.textContent = allOn ? 'None' : 'All';
     all.setAttribute('aria-pressed', 'false');
-    all.onclick = () => { S.addends = new Set(allOn ? [] : [1,2,3,4,5,6,7,8,9]); store.set('addends', [...S.addends]); renderChips(); };
+    all.onclick = () => { S.addends = new Set(allOn ? [] : [1,2,3,4,5,6,7,8,9,10]); store.set('addends', [...S.addends]); renderChips(); };
     box.appendChild(all);
     $('startBtn').disabled = S.addends.size === 0;
     $('startBtn').style.opacity = S.addends.size ? 1 : .5;
@@ -615,7 +616,7 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   /* ---------- game ---------- */
   function startRound() {
     const fam = famOf(S.focus), isCh = S.focus === 'challenge';
-    const addends = isCh ? [1, 2, 3, 4, 5, 6, 7, 8, 9] : S.focus ? [S.focus] : [...S.addends];
+    const addends = isCh ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : S.focus ? [S.focus] : [...S.addends];
     if (!addends.length) return;
     const len = isCh ? 20 : S.len;
     const pool = [];
@@ -725,6 +726,7 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   function trickFor(a, b) {
     const big = Math.max(a, b), small = Math.min(a, b);
     if (small === 0) return `<b>Zero trick:</b> adding 0 changes nothing!`;
+    if (a === 10 && b === 10) return `<b>Double 10s:</b> 10 and 10 more. Count by tens!`;
     if (big === 10) return `<b>10 trick:</b> 10 + ${small} is a 1 with a ${small} after it!`;
     if (big >= 8) return `<b>+${big} trick:</b> ${small} + 10 = ${small + 10}. Now count back ${10 - big}!`;
     if (small === 1) return `<b>+1 trick:</b> just say the number after ${big}!`;
