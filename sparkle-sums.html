@@ -255,14 +255,22 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 .focus-tile .name { font-family: var(--display); font-weight: 800; font-size: clamp(22px, 6vw, 32px); line-height: 1.05; }
 .focus-tile .tag { font-size: 14px; }
 .focus-tile .best { font-family: var(--display); font-weight: 800; font-size: 15px; margin-top: 8px; background: rgba(255,255,255,.28); border-radius: 999px; padding: 2px 10px; align-self: flex-start; }
-.focus-8 {
-  background: linear-gradient(180deg, #ff8ccc 0%, #d65cf0 55%, #a63cf0 100%);
-  box-shadow: 0 6px 0 #8a2bc4;
-}
-.focus-9 {
-  background: linear-gradient(180deg, #7de0ff 0%, #3fa0ff 55%, #4d6bff 100%);
-  box-shadow: 0 6px 0 #2e45c4;
-}
+/* nine family tiles in a 3x3 grid, challenge tile spans the row */
+.focus-tiles { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.focus-tile { align-items: center; text-align: center; padding: 12px 4px 10px; border-radius: 22px; gap: 0; }
+.focus-tile .emo { font-size: 32px; }
+.focus-tile .num { font-family: var(--display); font-weight: 800; font-size: 34px; line-height: 1; }
+.focus-tile .name { font-size: 13px; font-weight: 800; line-height: 1.15; }
+.focus-tile .best { align-self: center; font-size: 12px; margin-top: 6px; padding: 1px 8px; }
+.focus-tile.challenge { grid-column: 1 / -1; flex-direction: row; justify-content: center; gap: 14px; padding: 16px; text-align: left; margin-top: 4px; }
+.focus-tile.challenge .emo { font-size: 48px; }
+.focus-tile.challenge .num { font-size: clamp(22px, 6vw, 30px); }
+.focus-tile.challenge .name { font-size: 15px; }
+.focus-tile.challenge .best { align-self: flex-start; }
+.ch-text { display: flex; flex-direction: column; min-width: 0; }
+.timer { height: 12px; width: 100%; max-width: 320px; margin: 10px auto 0; border-radius: 999px; background: var(--blue-soft); overflow: hidden; }
+.timer > div { height: 100%; width: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--gold), #ff9a3c); box-shadow: inset 0 3px 0 rgba(255,255,255,.45); }
+.feedback.intro { color: var(--blue-deep); font-size: 22px; }
 .focus-badge { display: inline-block; font-family: var(--display); font-weight: 800; font-size: 18px; color: #fff; border-radius: 999px; padding: 4px 14px; box-shadow: none; position: absolute; top: 16px; left: 16px; }
 .card:has(.focus-badge:not([hidden])) { padding-top: 64px; }
 .trick { margin: 12px auto 0; max-width: 32ch; background: var(--blue-soft); border-radius: 18px; padding: 10px 14px; font-size: 18px; font-weight: 800; line-height: 1.35; }
@@ -292,13 +300,10 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   <!-- START -->
   <section class="panel" id="startScreen">
     <div>
-      <h2>Focus Zone</h2>
-      <p class="sub">Practice one tricky family with a special trick.</p>
+      <h2>Fact Families</h2>
+      <p class="sub">Pick a number to practice. Each one has its own trick!</p>
     </div>
-    <div class="focus-tiles">
-      <button class="focus-tile focus-8" id="focus8"><span class="emo" aria-hidden="true">🐙</span><span class="name">Super 8s</span><span class="tag">An octopus has 8 arms!</span><span class="best" id="best8">New!</span></button>
-      <button class="focus-tile focus-9" id="focus9"><span class="emo" aria-hidden="true">🐱</span><span class="name">Nine Lives 9s</span><span class="tag">A cat has 9 lives!</span><span class="best" id="best9">New!</span></button>
-    </div>
+    <div class="focus-tiles" id="families"></div>
     <div>
       <h2>Or mix your own facts</h2>
       <p class="sub">Tap the cards from your flashcard pile. Pink ones are in!</p>
@@ -338,6 +343,7 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
       </div>
       <div><span class="focus-badge" id="focusBadge" hidden></span></div>
       <span class="label" id="cardNum">Card 1 of 10</span>
+      <div class="timer" id="timer" hidden><div id="timerFill"></div></div>
       <div class="problem" aria-live="polite">
         <span class="a" id="numA">3</span><span class="op">+</span><span class="b" id="numB">2</span><span class="op">=</span><span class="ans" id="ans">?</span>
       </div>
@@ -356,6 +362,7 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   <section class="panel results" id="resultScreen" hidden>
     <h2 id="resultTitle">Amazing job!</h2>
     <p class="score" id="resultScore">8 / 10</p>
+    <p class="sub" id="resultBonus" hidden></p>
     <div class="big-stars" id="resultStars"></div>
     <div id="stickerWin" hidden>
       <div class="new-sticker" id="newSticker">🦄</div>
@@ -378,6 +385,22 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   const STICKERS = ['🦄','🌈','🦋','🍭','👑','🌸','🐬','🧁','💎','🎀','🌙','🐱','🍓','🪐','🐰','🌟','🍩','🦩','🐳','🌺'];
   const PRAISE = ['Sparkly!', 'You got it!', 'Super star!', 'Yes!', 'Glitter-tastic!', 'Amazing!', 'Wow!', 'Brilliant!', 'Nailed it!'];
   const TRY = ['So close! Try again', 'Oops! One more try', 'Almost! Try again'];
+  const CHEERS = ['Woohoo!', 'Yay!', 'Awesome!', 'You did it!', 'Super star!', 'Way to go!', 'Amazing!', 'Hooray!'];
+  const FAMILIES = [
+    { n: 1, emo: '🐝', name: 'Buzzy 1s',      fact: 'Just one more, buzz buzz!',  c: ['#ff8fcf', '#ff3ea5', '#e0137f'], sh: '#b30d66' },
+    { n: 2, emo: '🐧', name: 'Penguin 2s',    fact: 'Penguins waddle on 2 feet!', c: ['#7dd6ff', '#29b0ff', '#1677e0'], sh: '#0f56a8' },
+    { n: 3, emo: '🦖', name: 'Dino 3s',       fact: 'A triceratops has 3 horns!', c: ['#d59bff', '#b44dff', '#8a2be2'], sh: '#6a1fb0' },
+    { n: 4, emo: '🐶', name: 'Puppy 4s',      fact: 'A puppy has 4 paws!',        c: ['#6ff0d8', '#1fc8b0', '#0e9c8a'], sh: '#0a766a' },
+    { n: 5, emo: '⭐', name: 'Star 5s',       fact: 'A star has 5 points!',       c: ['#ffb08a', '#ff7a59', '#f0503c'], sh: '#b8392a' },
+    { n: 6, emo: '🐞', name: 'Ladybug 6s',    fact: 'A ladybug has 6 legs!',      c: ['#ff9ab8', '#ff4f86', '#e02462'], sh: '#a8164a' },
+    { n: 7, emo: '🌈', name: 'Rainbow 7s',    fact: 'A rainbow has 7 colors!',    c: ['#8fb4ff', '#5b7cff', '#3d4fe0'], sh: '#2e38a8' },
+    { n: 8, emo: '🐙', name: 'Super 8s',      fact: 'An octopus has 8 arms!',     c: ['#ff8ccc', '#d65cf0', '#a63cf0'], sh: '#8a2bc4' },
+    { n: 9, emo: '🐱', name: 'Nine Lives 9s', fact: 'A cat has 9 lives!',         c: ['#7de0ff', '#3fa0ff', '#4d6bff'], sh: '#2e45c4' }
+  ];
+  const CHALLENGE = { n: 'challenge', emo: '🏆', name: 'Super Sparkle Challenge', fact: 'Every fact, all mixed up. Beat the clock!', c: ['#ff3ea5', '#b44dff', '#29b0ff'], sh: '#5a2bb0' };
+  const CHALLENGE_SECONDS = 10;
+  const famOf = (k) => k === 'challenge' ? CHALLENGE : FAMILIES.find(f => f.n === k);
+  const famBg = (f) => f === CHALLENGE ? `linear-gradient(100deg, ${f.c.join(', ')})` : `linear-gradient(180deg, ${f.c[0]} 0%, ${f.c[1]} 55%, ${f.c[2]} 100%)`;
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const store = {
@@ -409,12 +432,37 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
       o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + .05);
     } catch {}
   }
-  const chime = () => [1046, 1318, 1568, 2093].forEach((f, i) => tone(f, i * .07, .35, 'triangle', .14));
+  // bouncy "ta-da": quick rising major arpeggio with a bell layer, then a sparkle shimmer
+  const chime = () => {
+    [[1046, 0], [1318, .07], [1568, .14], [2093, .23]].forEach(([f, t]) => { tone(f, t, .3, 'triangle', .13); tone(f * 2, t, .16, 'sine', .035); });
+    [2637, 3136, 3520, 4186, 3520, 4186].forEach((f, i) => tone(f, .36 + i * .045, .22, 'sine', .045));
+  };
   const boop = () => { tone(330, 0, .18, 'sine', .15); tone(262, .14, .25, 'sine', .15); };
-  const fanfare = () => [784, 988, 1175, 1568, 1976, 2349].forEach((f, i) => tone(f, i * .09, .5, 'triangle', .12));
-  function say(text) {
+  const fanfare = () => {
+    [[784, 0], [988, .1], [1175, .2], [1568, .32], [1175, .46], [1568, .56], [2093, .7]].forEach(([f, t]) => { tone(f, t, .4, 'triangle', .12); tone(f / 2, t, .3, 'sine', .05); });
+    [3136, 3520, 4186, 4699, 4186, 4699, 5274].forEach((f, i) => tone(f, .9 + i * .05, .25, 'sine', .04));
+  };
+
+  // pick the friendliest voice the device has (iPhone: Ava/Samantha, Android/Chrome: Google US English)
+  let voice = null;
+  function pickVoice() {
+    try {
+      const vs = speechSynthesis.getVoices();
+      const prefs = ['Ava', 'Samantha', 'Google US English', 'Microsoft Aria', 'Microsoft Jenny', 'Allison', 'Karen', 'Moira', 'Tessa', 'Zira'];
+      voice = prefs.map(n => vs.find(v => v.name.includes(n) && /^en/i.test(v.lang))).find(Boolean)
+        || vs.find(v => /^en[-_]US/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
+    } catch {}
+  }
+  if ('speechSynthesis' in window) { pickVoice(); try { speechSynthesis.onvoiceschanged = pickVoice; } catch {} }
+  function say(text, style = 'calm') {
     if (!S.sound || !('speechSynthesis' in window)) return;
-    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = .9; u.pitch = 1.25; speechSynthesis.speak(u); } catch {}
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      if (voice) u.voice = voice;
+      if (style === 'cheer') { u.rate = 1.08; u.pitch = 1.45; } else { u.rate = .92; u.pitch = 1.2; }
+      speechSynthesis.speak(u);
+    } catch {}
   }
 
   /* ---------- glitter canvas ---------- */
@@ -514,21 +562,44 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
 
   /* ---------- game ---------- */
   function startRound() {
-    const addends = S.focus ? [S.focus] : [...S.addends];
+    const fam = famOf(S.focus), isCh = S.focus === 'challenge';
+    const addends = isCh ? [1, 2, 3, 4, 5, 6, 7, 8, 9] : S.focus ? [S.focus] : [...S.addends];
     if (!addends.length) return;
+    const len = isCh ? 20 : S.len;
     const pool = [];
-    for (const b of addends) for (let a = 0; a <= 10; a++) pool.push({ a, b });
+    // challenge: no +0 freebies, and numbers can come in either order (3 + 8 or 8 + 3)
+    for (const b of addends) for (let a = isCh ? 2 : 0; a <= 10; a++) pool.push(isCh && Math.random() < .5 ? { a: b, b: a } : { a, b });
     let q = [];
-    while (q.length < S.len) q = q.concat(shuffle(pool.slice()));
-    q = q.slice(0, S.len);
+    while (q.length < len) q = q.concat(shuffle(pool.slice()));
+    q = q.slice(0, len);
     for (let i = 1; i < q.length; i++) if (q[i].a === q[i - 1].a && q[i].b === q[i - 1].b) { const j = (i + 2) % q.length; [q[i], q[j]] = [q[j], q[i]]; }
-    Object.assign(S, { queue: q, idx: 0, stars: 0, streak: 0, firstTry: 0, missed: new Map() });
+    Object.assign(S, { queue: q, idx: 0, stars: 0, streak: 0, firstTry: 0, lightning: 0, roundLen: len, missed: new Map() });
     const badge = $('focusBadge');
-    badge.hidden = !S.focus;
-    if (S.focus) { badge.className = 'focus-badge focus-' + S.focus; badge.textContent = S.focus === 8 ? '🐙 Super 8s' : '🐱 Nine Lives 9s'; }
+    badge.hidden = !fam;
+    if (fam) { badge.style.background = famBg(fam); badge.textContent = `${fam.emo} ${isCh ? 'Challenge' : fam.name}`; }
+    $('hintBtn').hidden = isCh;
     updateHud(); show('playScreen');
     $('choices').hidden = S.mode !== 'pick'; $('keypad').hidden = S.mode !== 'type';
     nextCard();
+    if (fam) {
+      $('feedback').textContent = fam.fact; $('feedback').className = 'feedback intro';
+      say(isCh ? 'Super Sparkle Challenge! Every fact, all mixed up. Beat the clock!' : `${fam.fact} Let's go!`, 'cheer');
+    }
+  }
+
+  function startTimer() {
+    const t = $('timer'), fill = $('timerFill');
+    t.hidden = S.focus !== 'challenge';
+    if (t.hidden) return;
+    fill.style.transition = 'none'; fill.style.width = '100%'; void fill.offsetWidth;
+    fill.style.transition = `width ${CHALLENGE_SECONDS}s linear`; fill.style.width = '0%';
+    S.cardStart = performance.now();
+  }
+  function stopTimer() {
+    const fill = $('timerFill');
+    if ($('timer').hidden) return Infinity;
+    fill.style.width = getComputedStyle(fill).width; fill.style.transition = 'none';
+    return (performance.now() - S.cardStart) / 1000;
   }
 
   function nextCard() {
@@ -542,6 +613,7 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
     $('cardNum').textContent = `Card ${S.idx + 1} of ${S.queue.length}`;
     $('bar').style.width = (S.idx / S.queue.length * 100) + '%';
     anim($('card'), 'bounce');
+    startTimer();
     if (S.mode === 'pick') renderChoices(a + b, a);
     else renderKeypad();
   }
@@ -597,12 +669,21 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
     showTrick();
   }
 
-  // +8 and +9 make-10 trick: add 10, then count back
+  // a strategy hint for every fact; the last step is always left for her
+  function trickFor(a, b) {
+    const big = Math.max(a, b), small = Math.min(a, b);
+    if (small === 0) return `<b>Zero trick:</b> adding 0 changes nothing!`;
+    if (big === 10) return `<b>10 trick:</b> 10 + ${small} is a 1 with a ${small} after it!`;
+    if (big >= 8) return `<b>+${big} trick:</b> ${small} + 10 = ${small + 10}. Now count back ${10 - big}!`;
+    if (small === 1) return `<b>+1 trick:</b> just say the number after ${big}!`;
+    if (a === b) return `<b>Doubles!</b> Hold up ${a} fingers on each hand and count them all!`;
+    if (small === 2) return `<b>+2 trick:</b> start at ${big}, then say the next 2 numbers!`;
+    return `<b>Count on:</b> start at the big number, ${big}, and count up ${small} on your fingers!`;
+  }
   function showTrick() {
     const { a, b } = S.queue[S.idx];
-    if (b < 8) return;
     const t = $('trick');
-    t.innerHTML = `<b>+${b} trick:</b> ${a} + 10 = ${a + 10}. Now count back ${10 - b}!`;
+    t.innerHTML = trickFor(a, b);
     t.hidden = false;
   }
 
@@ -613,15 +694,20 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
     if (n === sum) {
       S.locked = true;
       ans.textContent = sum; ans.className = 'ans right';
+      const secs = stopTimer();
+      const zap = S.tries === 0 && secs <= CHALLENGE_SECONDS;
       if (S.tries === 0) { S.stars++; S.firstTry++; S.streak++; } else S.streak = 0;
+      if (zap) S.lightning++;
       updateHud();
-      fb.textContent = S.tries === 0 ? (S.streak >= 3 && S.streak % 3 === 0 ? `${S.streak} in a row! 🔥` : pick(PRAISE)) : 'You figured it out!';
+      fb.textContent = S.tries === 0 ? (zap ? '⚡ Lightning fast!' : S.streak >= 3 && S.streak % 3 === 0 ? `${S.streak} in a row! 🔥` : pick(PRAISE)) : 'You figured it out!';
+      const cheerWord = S.tries === 0 ? (zap ? 'Lightning fast!' : pick(CHEERS)) : 'You figured it out!';
+      setTimeout(() => say(`${cheerWord} ${a} plus ${b} is ${sum}!`, 'cheer'), 150);
       fb.className = 'feedback good';
       if (S.mode === 'pick') btn.classList.add('win');
       anim($('card'), 'bounce');
       const [x, y] = centerOf(ans); burst(x, y, S.tries === 0 ? 80 : 35);
       chime();
-      setTimeout(() => { S.idx++; nextCard(); }, 1300);
+      setTimeout(() => { S.idx++; nextCard(); }, S.sound ? 2100 : 1300);
     } else {
       S.tries++; S.streak = 0; updateHud();
       const key = `${a} + ${b}`; S.missed.set(key, (S.missed.get(key) || 0) + 1);
@@ -630,9 +716,9 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
       if (S.mode === 'pick') btn.classList.add('out');
       else { S.typed = ''; ans.textContent = '?'; ans.className = 'ans'; }
       if (S.tries >= 2) { showDots(); fb.textContent = 'Count the dots with me!'; }
-      else if (S.focus) showTrick();
+      else if (S.focus && S.focus !== 'challenge') showTrick();
       // bring a missed fact back later in the round, once
-      if (S.tries === 1 && !S.queue.slice(S.idx + 1).some(q => q.a === a && q.b === b) && S.queue.length < S.len + 5) {
+      if (S.tries === 1 && !S.queue.slice(S.idx + 1).some(q => q.a === a && q.b === b) && S.queue.length < S.roundLen + 5) {
         S.queue.splice(Math.min(S.queue.length, S.idx + 3), 0, { a, b, again: true });
       }
     }
@@ -646,8 +732,11 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
       const prev = S.best[S.focus];
       if (!prev || ratio > prev.got / prev.total) { S.best[S.focus] = { got, total }; store.set('best', S.best); }
     }
-    $('resultTitle').textContent = ratio === 1 ? 'PERFECT! You are a math superstar!' : ratio >= .7 ? 'Amazing job!' : ratio >= .4 ? 'Great work! Keep sparkling!' : 'Good practice! Let\'s go again!';
+    const isCh = S.focus === 'challenge';
+    $('resultTitle').textContent = ratio === 1 ? (isCh ? 'CHALLENGE CHAMPION! You are a math superstar!' : 'PERFECT! You are a math superstar!') : ratio >= .7 ? 'Amazing job!' : ratio >= .4 ? 'Great work! Keep sparkling!' : 'Good practice! Let\'s go again!';
     $('resultScore').textContent = `${got} / ${total}`;
+    $('resultBonus').hidden = !isCh;
+    $('resultBonus').textContent = `⚡ ${S.lightning} lightning-fast answers!`;
     $('resultStars').innerHTML = Array.from({ length: total }, (_, i) => i < got ? '⭐' : '<span class="off">⭐</span>').join('');
     const earned = ratio >= .7;
     $('stickerWin').hidden = !earned;
@@ -663,21 +752,34 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
     show('resultScreen');
     fanfare();
     setTimeout(() => { burst(W * .25, H * .35, 70); burst(W * .75, H * .35, 70); if (earned) burst(W / 2, H * .5, 90); }, 150);
-    say(ratio === 1 ? 'Perfect! You are a math superstar!' : `You got ${got} stars!`);
+    say(ratio === 1 ? (isCh ? 'Challenge champion! You are a math superstar!' : 'Perfect! You are a math superstar!') : `Yay! You got ${got} stars!`, 'cheer');
   }
 
   function renderBest() {
-    [8, 9].forEach(k => { const b = S.best[k]; $('best' + k).textContent = b ? `Best: ${b.got}/${b.total} ⭐` : 'New!'; });
+    const box = $('families'); box.innerHTML = '';
+    [...FAMILIES, CHALLENGE].forEach(f => {
+      const isCh = f === CHALLENGE, b = S.best[f.n];
+      const best = b ? `Best ${b.got}/${b.total} ⭐` : isCh ? 'Can you beat it?' : 'New!';
+      const btn = document.createElement('button');
+      btn.className = 'focus-tile' + (isCh ? ' challenge' : '');
+      btn.style.background = famBg(f);
+      btn.style.boxShadow = `0 6px 0 ${f.sh}`;
+      btn.setAttribute('aria-label', `${f.name}. ${f.fact} ${best}`);
+      btn.innerHTML = isCh
+        ? `<span class="emo" aria-hidden="true">${f.emo}</span><span class="ch-text"><span class="num">${f.name}</span><span class="name">${f.fact}</span><span class="best">${best}</span></span>`
+        : `<span class="emo" aria-hidden="true">${f.emo}</span><span class="num">+${f.n}</span><span class="name">${f.name}</span><span class="best">${best}</span>`;
+      btn.onclick = () => { S.focus = f.n; startRound(); };
+      box.appendChild(btn);
+    });
   }
-  function goHome() { S.focus = null; renderBook(); renderBest(); show('startScreen'); }
+  function goHome() { S.focus = null; stopTimer(); speechSynthesisStop(); renderBook(); renderBest(); show('startScreen'); }
+  function speechSynthesisStop() { try { speechSynthesis.cancel(); } catch {} }
   $('startBtn').onclick = () => { S.focus = null; startRound(); };
-  $('focus8').onclick = () => { S.focus = 8; startRound(); };
-  $('focus9').onclick = () => { S.focus = 9; startRound(); };
   $('againBtn').onclick = startRound;
   $('changeBtn').onclick = goHome;
   $('quitBtn').onclick = goHome;
   $('hintBtn').onclick = showDots;
-  $('sayBtn').onclick = () => { const { a, b } = S.queue[S.idx]; say(`${a} plus ${b} equals what?`); };
+  $('sayBtn').onclick = () => { const { a, b } = S.queue[S.idx]; say(`${a} plus ${b} equals what?`, 'calm'); };
 
   setToggle('modeToggle', 'mode', S.mode);
   setToggle('lenToggle', 'len', S.len);
