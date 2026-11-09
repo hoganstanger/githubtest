@@ -419,11 +419,46 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   };
 
   /* ---------- sound ---------- */
-  let ac;
-  function tone(freq, start, dur, type = 'sine', vol = .18, to = 0) {
-    if (!S.sound) return;
+  // Phones only allow web sound after a tap, and pause it when you switch apps, lock the
+  // screen or get a notification. So the audio engine is (re)started on every tap, and a
+  // sound asked for while it is paused is held for a moment and played as soon as it wakes.
+  let ac = null, waking = null;
+  const held = [];
+  function getAC() {
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { ac = null; } }
+    return ac;
+  }
+  function wakeAudio() {
+    const a = getAC();
+    if (!a || a.state === 'running' || waking) return;
     try {
-      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      waking = Promise.resolve(a.resume()).catch(() => {}).then(() => {
+        waking = null;
+        const fresh = held.splice(0).filter(h => performance.now() - h.at < 1500); // drop stale sounds
+        if (a.state === 'running') fresh.forEach(h => playTone(...h.args));
+      });
+    } catch { waking = null; }
+  }
+  function unlockAudio() {
+    const a = getAC();
+    if (!a) return;
+    if (!unlockAudio.done) {   // older iPhones also need one silent sound started inside a tap
+      try { const src = a.createBufferSource(); src.buffer = a.createBuffer(1, 1, 22050); src.connect(a.destination); src.start(0); unlockAudio.done = true; } catch {}
+    }
+    if (a.state !== 'running') wakeAudio();
+  }
+  ['pointerdown', 'touchend', 'mousedown', 'keydown'].forEach(ev => addEventListener(ev, unlockAudio, { capture: true, passive: true }));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) wakeAudio(); });
+  function tone(...args) {
+    if (!S.sound) return;
+    const a = getAC();
+    if (!a) return;
+    if (a.state === 'running') return playTone(...args);
+    if (held.length < 60) held.push({ args, at: performance.now() });
+    wakeAudio();
+  }
+  function playTone(freq, start, dur, type = 'sine', vol = .18, to = 0) {
+    try {
       const o = ac.createOscillator(), g = ac.createGain();
       o.type = type;
       const t = ac.currentTime + start;
@@ -516,13 +551,12 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
   lz.id = 'lasers'; lz.setAttribute('aria-hidden', 'true'); document.body.appendChild(lz);
   const lx = lz.getContext('2d');
   const LASER_COLORS = ['#ff3ea5', '#29b0ff', '#b44dff', '#3dffb5', '#ffe14d', '#ff7cc8'];
-  let beams = [], laserStart = 0, laserEnd = 0, laserRunning = false;
+  let beams = [], laserStart = 0, laserEnd = 0, laserRunning = false, lastLaserFrame = 0;
   function sizeLasers() { lz.width = innerWidth * dpr; lz.height = innerHeight * dpr; lx.setTransform(dpr, 0, 0, dpr, 0, 0); }
   addEventListener('resize', sizeLasers);
   const pew = (t) => { tone(1900, t, .16, 'square', .03, 320); tone(3800, t, .08, 'sine', .02, 900); };
   function laserShow(ms) {
-    if (reduceMotion) return;
-    sizeLasers();
+    try { sizeLasers(); } catch {}
     const w = innerWidth, h = innerHeight;
     // beams fan out from the bottom corners, bottom middle and top corners
     const origins = [[0, h], [w, h], [w / 2, h + 10], [0, -10], [w, -10]];
@@ -537,14 +571,23 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
     laserStart = performance.now(); laserEnd = laserStart + ms;
     const pews = Math.round(ms / 260);
     for (let i = 0; i < pews; i++) pew(.25 + i * .24 + Math.random() * .06);
-    if (!laserRunning) { laserRunning = true; requestAnimationFrame(drawLasers); }
+    // (re)start the animation loop if it is not running or has stalled
+    if (!laserRunning || performance.now() - lastLaserFrame > 400) { laserRunning = true; lastLaserFrame = performance.now(); requestAnimationFrame(drawLasers); }
   }
   function stopLasers() { laserEnd = 0; }
-  function drawLasers(t) {
+  function drawLasers() {
+    const t = performance.now();
+    lastLaserFrame = t;
+    try { drawLaserFrame(t); } catch {}   // one bad frame must never end the show
+    if (laserEnd - t > 0) requestAnimationFrame(drawLasers);
+    else { laserRunning = false; try { lx.globalCompositeOperation = 'source-over'; lx.clearRect(0, 0, innerWidth, innerHeight); } catch {} }
+  }
+  function drawLaserFrame(t) {
     const w = innerWidth, h = innerHeight;
+    lx.globalCompositeOperation = 'source-over'; lx.globalAlpha = 1;
     lx.clearRect(0, 0, w, h);
     const left = laserEnd - t;
-    if (left <= 0) { laserRunning = false; return; }
+    if (left <= 0) return;
     const fade = Math.max(0, Math.min(1, (t - laserStart) / 300, left / 900));
     const len = Math.hypot(w, h) * 1.2;
     // dim the lights so the neon pops
@@ -566,7 +609,6 @@ button:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
       lx.globalAlpha = 1; lx.fillStyle = g; lx.fillRect(x - 60, y - 60, 120, 120);
     }
     lx.globalCompositeOperation = 'source-over'; lx.globalAlpha = 1;
-    requestAnimationFrame(drawLasers);
   }
 
   /* ---------- helpers ---------- */
